@@ -1,0 +1,27 @@
+academic:
+  metadata_extraction:
+    use_llm_fallback: true
+    confidence_threshold: 0.7
+
+  gnn:
+    train_on_startup: false
+    model_checkpoint_dir: "models/gnn"
+    node_classifier:
+      hidden_dim: 256
+      num_layers: 3
+      dropout: 0.5
+
+  indexing:
+    use_llama_index: true
+    chunk_strategy: "hybrid"
+    chunk_size: 512
+    chunk_overlap: 50
+
+  recommendations:
+    top_k: 20
+    min_confidence: 0.6
+    diversity_weight: 0.3
+
+  citation_analysis:
+    max_depth: 3
+    min_citations: 5
