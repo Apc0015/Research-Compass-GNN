@@ -2607,23 +2607,27 @@ def create_unified_ui(system=None):
                                     try:
                                         # Get the LLM manager from container
                                         llm_mgr = None
-                                        
+
                                         if hasattr(system, 'container'):
                                             try:
                                                 llm_mgr = system.container.resolve('llm_manager')
                                             except Exception as e:
                                                 logger.debug(f"Could not resolve llm_manager from container: {e}")
-                                        
+
+                                        # Fallback: try to access llm_manager directly
+                                        if not llm_mgr and hasattr(system, 'llm_manager'):
+                                            llm_mgr = system.llm_manager
+
                                         # Update the LLM manager configuration dynamically
                                         if llm_mgr and hasattr(llm_mgr, 'update_config'):
                                             # Determine base_url based on provider
                                             if provider == "ollama":
-                                                base_url = "http://localhost:11434"
+                                                base_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
                                             elif provider == "lmstudio":
-                                                base_url = "http://localhost:1234"
+                                                base_url = os.environ.get('LMSTUDIO_BASE_URL', 'http://localhost:1234')
                                             else:
                                                 base_url = None
-                                            
+
                                             llm_mgr.update_config(
                                                 provider=provider,
                                                 model=model,
@@ -2632,14 +2636,14 @@ def create_unified_ui(system=None):
                                                 temperature=temp,
                                                 max_tokens=max_tok
                                             )
-                                            update_msg = "\n✅ Configuration applied immediately - no restart needed!"
+                                            update_msg = "\n\n✅ Configuration applied immediately - no restart needed!"
                                         else:
-                                            update_msg = "\n⚠️ LLM manager not found. Restart recommended for changes to take effect."
+                                            update_msg = "\n\n⚠️ LLM manager not available in current session.\nSettings saved to .env - they will apply on next launch."
                                     except Exception as e:
                                         logger.error(f"Error updating LLM config: {e}")
-                                        update_msg = f"\n⚠️ Could not update runtime config: {str(e)}\nRestart recommended."
+                                        update_msg = f"\n\n⚠️ Could not update runtime config: {str(e)}\nSettings saved to .env - they will apply on next launch."
                                 else:
-                                    update_msg = "\n⚠️ System not initialized. Restart required to apply changes."
+                                    update_msg = "\n\n📝 Settings saved successfully!\nSettings will apply when you launch the application.\n\n💡 Tip: If you're already running, restart the application to use the new settings."
 
                                 status = f"""✅ LLM Settings Saved Successfully!
 
@@ -2797,15 +2801,19 @@ Settings saved to .env file.{update_msg}"""
                                             except Exception as e:
                                                 logger.debug(f"Could not resolve vector_search from container: {e}")
                                         
+                                        # Fallback: direct access
+                                        if not vector_search and hasattr(system, 'vector_search'):
+                                            vector_search = system.vector_search
+
                                         # Update the embedding model
                                         if vector_search:
                                             vector_search.provider = provider
                                             vector_search.model_name = model_name
-                                            
+
                                             if provider == "huggingface":
                                                 from sentence_transformers import SentenceTransformer
                                                 vector_search.model = SentenceTransformer(model_name)
-                                                update_msg = "\n✅ Configuration applied immediately - no restart needed!\nHuggingFace model loaded and ready to use."
+                                                update_msg = "\n\n✅ Configuration applied immediately - no restart needed!\nHuggingFace model loaded and ready to use."
                                             elif provider == "ollama":
                                                 vector_search.base_url = ollama_url
                                                 vector_search.model = None  # Ollama doesn't need pre-loaded model
@@ -2814,16 +2822,16 @@ Settings saved to .env file.{update_msg}"""
                                                     import requests
                                                     response = requests.get(f"{ollama_url}/api/tags", timeout=5)
                                                     response.raise_for_status()
-                                                    update_msg = f"\n✅ Configuration applied immediately - no restart needed!\nConnected to Ollama at {ollama_url}\nModel: {model_name}"
+                                                    update_msg = f"\n\n✅ Configuration applied immediately - no restart needed!\nConnected to Ollama at {ollama_url}\nModel: {model_name}"
                                                 except Exception as e:
-                                                    update_msg = f"\n⚠️ Ollama connection failed: {str(e)}\nMake sure Ollama is running: ollama serve"
+                                                    update_msg = f"\n\n⚠️ Ollama connection failed: {str(e)}\nSettings saved to .env. Make sure Ollama is running: ollama serve"
                                         else:
-                                            update_msg = "\n⚠️ Vector search not found. Restart recommended for changes to take effect."
+                                            update_msg = "\n\n📝 Settings saved successfully!\nEmbedding configuration will apply on next launch."
                                     except Exception as e:
                                         logger.error(f"Error updating embedding model: {e}")
-                                        update_msg = f"\n⚠️ Could not update runtime: {str(e)}\nRestart recommended."
+                                        update_msg = f"\n\n⚠️ Could not update runtime: {str(e)}\nSettings saved to .env - restart to apply."
                                 else:
-                                    update_msg = "\n⚠️ System not initialized. Restart required to apply changes."
+                                    update_msg = "\n\n📝 Settings saved successfully!\nEmbedding configuration will apply when you launch the application.\n\n💡 Tip: If you're already running, restart to use the new settings."
 
                                 status = f"""✅ Embedding Settings Saved!
 
@@ -3066,39 +3074,54 @@ Restart may be required for changes to take effect."""
                                         return status
                                     
                                     # Try to update graph manager in real-time
-                                    if system and hasattr(system, 'container'):
+                                    update_msg = ""
+                                    if system:
                                         try:
-                                            graph_manager = system.container.resolve('graph_manager')
-                                            
-                                            # Close existing connection
-                                            if hasattr(graph_manager, 'close'):
+                                            graph_manager = None
+
+                                            # Try to get from container
+                                            if hasattr(system, 'container'):
                                                 try:
-                                                    graph_manager.close()
-                                                except:
-                                                    pass
-                                            
-                                            # Update connection parameters
-                                            if hasattr(graph_manager, 'driver'):
-                                                from neo4j import GraphDatabase
-                                                graph_manager.uri = uri
-                                                graph_manager.user = username
-                                                graph_manager.password = password
-                                                graph_manager.driver = GraphDatabase.driver(uri, auth=(username, password))
-                                                
-                                                # Test new connection
-                                                try:
-                                                    with graph_manager.driver.session() as session:
-                                                        session.run("RETURN 1")
-                                                    update_msg = "\n✅ Configuration applied immediately - no restart needed!\nDatabase connection updated and verified."
+                                                    graph_manager = system.container.resolve('graph_manager')
                                                 except Exception as e:
-                                                    update_msg = f"\n⚠️ Connection updated but verification failed: {str(e)}"
+                                                    logger.debug(f"Could not resolve from container: {e}")
+
+                                            # Fallback: direct access
+                                            if not graph_manager and hasattr(system, 'graph_manager'):
+                                                graph_manager = system.graph_manager
+
+                                            if graph_manager:
+                                                # Close existing connection
+                                                if hasattr(graph_manager, 'close'):
+                                                    try:
+                                                        graph_manager.close()
+                                                    except:
+                                                        pass
+
+                                                # Update connection parameters
+                                                if hasattr(graph_manager, 'driver'):
+                                                    from neo4j import GraphDatabase
+                                                    graph_manager.uri = uri
+                                                    graph_manager.user = username
+                                                    graph_manager.password = password
+                                                    graph_manager.driver = GraphDatabase.driver(uri, auth=(username, password))
+
+                                                    # Test new connection
+                                                    try:
+                                                        with graph_manager.driver.session() as session:
+                                                            session.run("RETURN 1")
+                                                        update_msg = "\n\n✅ Configuration applied immediately - no restart needed!\nDatabase connection updated and verified."
+                                                    except Exception as e:
+                                                        update_msg = f"\n\n⚠️ Connection updated but verification failed: {str(e)}\nSettings saved to .env - restart to apply."
+                                                else:
+                                                    update_msg = "\n\n⚠️ Could not update runtime connection.\nSettings saved to .env - they will apply on next launch."
                                             else:
-                                                update_msg = "\n⚠️ Could not update runtime connection. Restart recommended."
+                                                update_msg = "\n\n📝 Settings saved successfully!\nDatabase connection will be established on next launch."
                                         except Exception as e:
                                             logger.debug(f"Could not update graph manager: {e}")
-                                            update_msg = "\n⚠️ Restart recommended for changes to take full effect."
+                                            update_msg = "\n\n📝 Settings saved to .env successfully!\nRestart the application to use the new database connection."
                                     else:
-                                        update_msg = "\n⚠️ System not initialized. Restart required to apply changes."
+                                        update_msg = "\n\n📝 Settings saved successfully!\nDatabase connection will be established when you launch the application.\n\n💡 Tip: If you're already running, restart to use the new settings."
                                     
                                     status = f"""✅ Database Settings Saved Successfully!
 

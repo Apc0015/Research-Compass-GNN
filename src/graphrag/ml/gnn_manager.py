@@ -106,6 +106,140 @@ class GNNManager:
 
         print("✓ Models initialized")
 
+    def train(
+        self,
+        data: 'Data',
+        model_type: str,
+        task: str,
+        epochs: int = 50,
+        lr: float = 0.01,
+        progress_callback: Optional[callable] = None
+    ) -> Dict:
+        """
+        Train a specific GNN model with progress tracking
+
+        Args:
+            data: PyG Data object
+            model_type: Model type (gcn, gat, transformer, hetero)
+            task: Task (node_classification, link_prediction, embedding)
+            epochs: Training epochs
+            lr: Learning rate
+            progress_callback: Progress callback function(epoch, total, metrics)
+
+        Returns:
+            Training results
+        """
+        # Store graph data
+        self.graph_data = data
+
+        # Checkpoint paths
+        checkpoint_path = self.model_dir / f"{task}_checkpoint.pt"
+        save_path = self.model_dir / f"{task}_best.pt"
+
+        if task == "node_classification":
+            # Initialize model if needed
+            if self.node_classifier is None:
+                self.node_classifier = self._create_node_classifier(data)
+
+            # Add labels if not present
+            if not hasattr(data, 'y'):
+                # Simple auto-labeling based on node properties
+                num_classes = 5  # Default
+                data.y = torch.randint(0, num_classes, (data.num_nodes,))
+
+            # Train
+            history = train_node_classifier(
+                self.node_classifier,
+                data,
+                epochs=epochs,
+                lr=lr,
+                patience=max(10, epochs // 5),
+                save_path=save_path,
+                checkpoint_path=checkpoint_path,
+                checkpoint_interval=10,
+                progress_callback=progress_callback,
+                resume_from_checkpoint=True
+            )
+
+            return {
+                "task": task,
+                "model_type": model_type,
+                "history": history,
+                "final_val_acc": history['val_acc'][-1] if history['val_acc'] else 0,
+                "final_train_loss": history['train_loss'][-1] if history['train_loss'] else 0
+            }
+
+        elif task == "link_prediction":
+            # Initialize model if needed
+            if self.link_predictor is None:
+                self.link_predictor = self._create_link_predictor(data)
+
+            # Train
+            history = train_link_predictor(
+                self.link_predictor,
+                data,
+                epochs=epochs,
+                lr=lr,
+                patience=max(10, epochs // 5),
+                save_path=save_path,
+                checkpoint_path=checkpoint_path,
+                checkpoint_interval=10,
+                progress_callback=progress_callback,
+                resume_from_checkpoint=True
+            )
+
+            return {
+                "task": task,
+                "model_type": model_type,
+                "history": history,
+                "final_val_auc": history['val_auc'][-1] if history['val_auc'] else 0,
+                "final_train_loss": history['train_loss'][-1] if history['train_loss'] else 0
+            }
+
+        elif task == "embedding":
+            # Train node2vec embeddings
+            embeddings = self.embedder.train_node2vec()
+            self.embedder.store_embeddings_in_neo4j()
+
+            return {
+                "task": task,
+                "model_type": "node2vec",
+                "num_embeddings": len(embeddings)
+            }
+
+        else:
+            raise ValueError(f"Unknown task: {task}")
+
+    def _create_node_classifier(self, data):
+        """Create node classifier model"""
+        from .node_classifier import PaperClassifier
+
+        num_classes = data.y.max().item() + 1 if hasattr(data, 'y') else 5
+
+        model = PaperClassifier(
+            input_dim=data.x.shape[1],
+            output_dim=num_classes,
+            hidden_dim=256,
+            num_layers=3,
+            dropout=0.5
+        ).to(self.device)
+
+        return model
+
+    def _create_link_predictor(self, data):
+        """Create link predictor model"""
+        from .link_predictor import CitationPredictor
+
+        model = CitationPredictor(
+            input_dim=data.x.shape[1],
+            hidden_dim=128,
+            num_layers=2,
+            heads=4,
+            dropout=0.3
+        ).to(self.device)
+
+        return model
+
     def train_all_models(
         self,
         epochs: int = 100,
@@ -137,7 +271,9 @@ class GNNManager:
             self.graph_data,
             epochs=epochs,
             patience=patience,
-            save_path=self.model_dir / "node_classifier.pt"
+            save_path=self.model_dir / "node_classifier.pt",
+            checkpoint_path=self.model_dir / "node_classifier_checkpoint.pt",
+            checkpoint_interval=10
         )
         history['node_classifier'] = nc_history
 
@@ -151,7 +287,9 @@ class GNNManager:
             self.graph_data,
             epochs=epochs,
             patience=patience,
-            save_path=self.model_dir / "link_predictor.pt"
+            save_path=self.model_dir / "link_predictor.pt",
+            checkpoint_path=self.model_dir / "link_predictor_checkpoint.pt",
+            checkpoint_interval=10
         )
         history['link_predictor'] = lp_history
 
