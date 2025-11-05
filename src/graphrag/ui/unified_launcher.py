@@ -542,7 +542,70 @@ def create_unified_ui(system=None):
 
                     # Sub-tab: Graph Visualization
                     with gr.Tab("🎨 Visualize Graph"):
-                        gr.Markdown("Explore your knowledge graph interactively")
+                        gr.Markdown("""
+                        **🎯 Purpose:**
+                        Generate interactive visualizations of your knowledge graph to explore research connections, citation networks, and author collaborations.
+
+                        **📋 Step-by-Step Instructions:**
+                        1. **Set Maximum Nodes**: Use slider to limit displayed nodes (10-500)
+                           - Start with 50-100 for initial exploration
+                           - Increase for comprehensive view (slower rendering)
+
+                        2. **Choose Layout Algorithm**:
+                           - **Spring**: Natural clustering, best for most graphs
+                           - **Circular**: Nodes arranged in circles, good for finding patterns
+                           - **Hierarchical**: Top-down tree structure, best for citation chains
+
+                        3. **Generate**: Click "🎨 Generate Visualization"
+
+                        4. **Interact**: The visualization is interactive:
+                           - Zoom in/out with mouse wheel
+                           - Drag nodes to rearrange
+                           - Click nodes to see details
+                           - Hover over edges to see relationship types
+
+                        **💡 Example Use Cases:**
+
+                        *Example 1: Explore Citation Network*
+                        ```
+                        Max Nodes: 100
+                        Layout: Spring
+                        Result: See which papers cite each other, identify clusters of related work
+                        ```
+
+                        *Example 2: Author Collaboration Map*
+                        ```
+                        Max Nodes: 50
+                        Layout: Circular
+                        Result: Visualize co-authorship patterns and research communities
+                        ```
+
+                        *Example 3: Citation Hierarchy*
+                        ```
+                        Max Nodes: 75
+                        Layout: Hierarchical
+                        Result: See foundational papers at top, newer citations below
+                        ```
+
+                        **🎨 Layout Comparison:**
+                        | Layout | Best For | Speed | Visual Style |
+                        |--------|----------|-------|--------------|
+                        | **Spring** | General exploration, finding clusters | Medium | Organic, natural grouping |
+                        | **Circular** | Pattern detection, symmetry | Fast | Organized, circular arrangement |
+                        | **Hierarchical** | Citation chains, paper evolution | Slow | Tree-like, top-down flow |
+
+                        **⚡ Performance Tips:**
+                        - Start with 50 nodes for fast loading
+                        - Spring layout: O(n²) complexity, slower for large graphs
+                        - Circular layout: O(n) complexity, fastest option
+                        - Hierarchical layout: O(n log n), moderate speed
+
+                        **📝 Tips:**
+                        - Use smaller node counts for faster rendering
+                        - Spring layout best reveals natural communities
+                        - Export visualization as HTML for presentations
+                        - Colors indicate node types: Papers (blue), Authors (green), Concepts (orange)
+                        """)
 
                         with gr.Row():
                             max_nodes_slider = gr.Slider(
@@ -582,7 +645,132 @@ def create_unified_ui(system=None):
 
                     # Sub-tab: GNN Training
                     with gr.Tab("🤖 Train GNN Models"):
-                        gr.Markdown("Train Graph Neural Network models on your knowledge graph")
+                        gr.Markdown("""
+                        **🎯 Purpose:**
+                        Train Graph Neural Network (GNN) models to learn patterns in your research graph. These AI models can predict missing citations, classify papers, and generate semantic embeddings.
+
+                        **📋 Step-by-Step Instructions:**
+                        1. **Select Model Type**:
+                           - **GCN** (Graph Convolutional Network): Fast, good baseline
+                           - **GAT** (Graph Attention): Best quality, learns important connections
+                           - **Transformer**: Cutting-edge, best for large graphs
+                           - **Hetero**: For graphs with multiple node/edge types
+
+                        2. **Choose Task Type**:
+                           - **Link Prediction**: Predict missing citations between papers
+                           - **Node Classification**: Classify papers by topic/field
+                           - **Embedding**: Generate vector representations for similarity search
+
+                        3. **Set Training Parameters**:
+                           - **Epochs**: 50-100 for most tasks (more = better but slower)
+                           - **Learning Rate**: 0.001-0.01 (lower = stable, higher = faster)
+
+                        4. **Start Training**: Click "🚀 Start Training"
+
+                        5. **Monitor Progress**: Watch training status and metrics
+
+                        **💡 Example Training Scenarios:**
+
+                        *Example 1: Find Missing Citations*
+                        ```
+                        Model Type: GAT (best accuracy)
+                        Task: link_prediction
+                        Epochs: 50
+                        Learning Rate: 0.01
+
+                        Result: Model learns to predict which papers should cite each other
+                        Use Case: Discover papers you might have missed in literature review
+                        ```
+
+                        *Example 2: Classify Research Topics*
+                        ```
+                        Model Type: GCN (faster)
+                        Task: node_classification
+                        Epochs: 75
+                        Learning Rate: 0.005
+
+                        Result: Automatically categorize papers by research area
+                        Use Case: Organize large paper collections by topic
+                        ```
+
+                        *Example 3: Semantic Search*
+                        ```
+                        Model Type: Transformer (best quality)
+                        Task: embedding
+                        Epochs: 100
+                        Learning Rate: 0.001
+
+                        Result: Generate embeddings for similarity-based search
+                        Use Case: Find conceptually similar papers, even without citations
+                        ```
+
+                        **🤖 Model Comparison:**
+                        | Model | Speed | Accuracy | Memory | Best For |
+                        |-------|-------|----------|--------|----------|
+                        | **GCN** | ⚡⚡⚡ Fast | Good | Low | Quick experiments, baselines |
+                        | **GAT** | ⚡⚡ Medium | Best | Medium | Production, highest accuracy |
+                        | **Transformer** | ⚡ Slow | Excellent | High | Large graphs, cutting-edge results |
+                        | **Hetero** | ⚡⚡ Medium | Very Good | Medium | Multi-type graphs (papers+authors+concepts) |
+
+                        **📊 Task Type Details:**
+
+                        **Link Prediction:**
+                        - Learns: Which papers should cite each other
+                        - Output: Probability scores for potential citations
+                        - Metrics: AUC-ROC, precision@k, recall@k
+                        - Use: Literature gap analysis, recommendation
+
+                        **Node Classification:**
+                        - Learns: Paper categories, research fields
+                        - Output: Class labels and probabilities
+                        - Metrics: Accuracy, F1-score, confusion matrix
+                        - Use: Automatic tagging, organization
+
+                        **Embedding:**
+                        - Learns: Dense vector representations
+                        - Output: N-dimensional embeddings (typically 128-512d)
+                        - Metrics: Reconstruction loss, clustering quality
+                        - Use: Similarity search, visualization, clustering
+
+                        **⚙️ Parameter Tuning Guide:**
+
+                        **Epochs:**
+                        - Small graphs (<100 nodes): 30-50 epochs
+                        - Medium graphs (100-1000 nodes): 50-100 epochs
+                        - Large graphs (>1000 nodes): 100-200 epochs
+                        - Watch for: Training loss plateau = enough epochs
+
+                        **Learning Rate:**
+                        - Too high (>0.1): Model doesn't converge, loss oscillates
+                        - Good range (0.001-0.01): Steady improvement
+                        - Too low (<0.0001): Very slow learning
+                        - Recommended: Start with 0.01, reduce if unstable
+
+                        **⏱️ Training Time:**
+                        - GCN (50 epochs, 100 nodes): ~30 seconds
+                        - GAT (50 epochs, 100 nodes): ~1-2 minutes
+                        - Transformer (100 epochs, 500 nodes): ~5-10 minutes
+
+                        **✅ Success Indicators:**
+                        - Training loss decreases steadily
+                        - Validation metrics improve over epochs
+                        - Status shows "✅ Training completed successfully!"
+                        - Metrics JSON shows reasonable accuracy (>0.7 for most tasks)
+
+                        **🔧 Troubleshooting:**
+                        - **Error: "Not enough nodes"**: Need minimum 20 nodes, upload more papers
+                        - **Error: "Graph not built"**: Go to Upload tab, enable "Build knowledge graph"
+                        - **Loss = NaN**: Learning rate too high, reduce to 0.001
+                        - **No improvement**: Try different model type or increase epochs
+                        - **Out of memory**: Reduce graph size or use GCN instead of Transformer
+
+                        **📝 Pro Tips:**
+                        - Train link prediction first - most useful for research
+                        - GAT gives best accuracy-to-speed tradeoff
+                        - Save models automatically after training
+                        - Retrain when you add significant new papers (>20% growth)
+                        - Monitor training metrics - stop early if no improvement
+                        """)
 
                         with gr.Row():
                             with gr.Column():
@@ -660,7 +848,130 @@ def create_unified_ui(system=None):
 
                     # Sub-tab: GNN Predictions
                     with gr.Tab("🔮 GNN Predictions"):
-                        gr.Markdown("Get predictions from trained GNN models")
+                        gr.Markdown("""
+                        **🎯 Purpose:**
+                        Use your trained GNN models to make intelligent predictions about research connections, find similar papers, and discover potential citations.
+
+                        **⚠️ Prerequisites:**
+                        You must train a GNN model first (use "Train GNN Models" tab)!
+
+                        **📋 Step-by-Step Instructions:**
+                        1. **Select Prediction Type**:
+                           - **Link Prediction**: Find papers that should cite each other
+                           - **Node Classification**: Classify a paper by topic/field
+                           - **Similar Nodes**: Find papers similar to a given paper
+
+                        2. **Enter Node ID**:
+                           - Use paper title (e.g., "Attention Is All You Need")
+                           - OR use internal node ID if known
+
+                        3. **Set Top K**: Number of results to return (5-50)
+
+                        4. **Get Predictions**: Click "🔮 Get Predictions"
+
+                        **💡 Example Use Cases:**
+
+                        *Example 1: Find Missing Citations*
+                        ```
+                        Prediction Type: link_prediction
+                        Node ID: "Attention Is All You Need"
+                        Top K: 10
+
+                        Result:
+                        [
+                          {"paper": "BERT", "score": 0.95, "reason": "Both use transformers"},
+                          {"paper": "GPT-2", "score": 0.92, "reason": "Transformer architecture"},
+                          {"paper": "XLNet", "score": 0.89, "reason": "Attention mechanism"}
+                        ]
+
+                        Interpretation: These papers should cite the transformer paper but may not
+                        ```
+
+                        *Example 2: Classify Research Paper*
+                        ```
+                        Prediction Type: node_classification
+                        Node ID: "My Research Paper"
+                        Top K: 5
+
+                        Result:
+                        {
+                          "predicted_class": "Natural Language Processing",
+                          "confidence": 0.87,
+                          "top_classes": [
+                            {"class": "NLP", "prob": 0.87},
+                            {"class": "Machine Learning", "prob": 0.08},
+                            {"class": "Computer Vision", "prob": 0.03}
+                          ]
+                        }
+
+                        Interpretation: Paper is most likely NLP-related (87% confidence)
+                        ```
+
+                        *Example 3: Find Similar Papers*
+                        ```
+                        Prediction Type: similar_nodes
+                        Node ID: "Graph Neural Networks Survey"
+                        Top K: 8
+
+                        Result:
+                        [
+                          {"paper": "GCN Paper", "similarity": 0.94},
+                          {"paper": "GAT Paper", "similarity": 0.91},
+                          {"paper": "GraphSAGE", "similarity": 0.89},
+                          {"paper": "Message Passing Networks", "similarity": 0.85}
+                        ]
+
+                        Interpretation: These papers cover similar topics/methods
+                        ```
+
+                        **🔍 Prediction Type Details:**
+
+                        **Link Prediction:**
+                        - **Use Case**: Literature review gap analysis
+                        - **Output**: Ranked list of papers with citation probability scores
+                        - **Interpretation**: High scores (>0.8) = strong citation relationship
+                        - **Best For**: Finding papers you should have cited
+
+                        **Node Classification:**
+                        - **Use Case**: Automatic paper categorization
+                        - **Output**: Predicted class label + confidence scores
+                        - **Interpretation**: Confidence >0.7 = reliable classification
+                        - **Best For**: Organizing paper collections, identifying research areas
+
+                        **Similar Nodes:**
+                        - **Use Case**: Exploratory research, finding related work
+                        - **Output**: Papers ranked by similarity score
+                        - **Interpretation**: Scores >0.85 = very similar content/structure
+                        - **Best For**: Discovering papers on same topic
+
+                        **📊 Score Interpretation:**
+                        - **0.9-1.0**: Very strong relationship/similarity
+                        - **0.8-0.9**: Strong relationship, high confidence
+                        - **0.7-0.8**: Moderate relationship, worth investigating
+                        - **0.6-0.7**: Weak relationship, may be relevant
+                        - **<0.6**: Low confidence, probably not related
+
+                        **⚙️ Parameter Tuning:**
+
+                        **Top K:**
+                        - Small (5-10): Most relevant results only
+                        - Medium (10-20): Balanced exploration
+                        - Large (20-50): Comprehensive analysis
+
+                        **📝 Tips:**
+                        - Start with Top K = 10 for most tasks
+                        - Link prediction works best with >100 papers in graph
+                        - Node classification requires trained classifier (not just embeddings)
+                        - Similar nodes works even with embedding-only model
+                        - Higher scores = more confident predictions
+
+                        **🔧 Troubleshooting:**
+                        - **Error: "Model not trained"**: Go to "Train GNN Models" tab first
+                        - **Error: "Node not found"**: Check paper title spelling, try partial match
+                        - **Empty results**: Graph too small, add more papers
+                        - **Low scores (<0.5)**: May need more training epochs or better model
+                        - **Prediction errors**: Retrain model with current graph data
+                        """)
 
                         with gr.Row():
                             with gr.Column():
@@ -712,7 +1023,160 @@ def create_unified_ui(system=None):
 
                     # Sub-tab: Export Graph
                     with gr.Tab("💾 Export Graph"):
-                        gr.Markdown("Export your knowledge graph for external analysis")
+                        gr.Markdown("""
+                        **🎯 Purpose:**
+                        Export your knowledge graph data for external analysis, backup, sharing, or use in other tools (Gephi, Cytoscape, custom scripts).
+
+                        **📋 Step-by-Step Instructions:**
+                        1. **Select Export Format**:
+                           - **JSON**: Full graph with all properties, best for programmatic access
+                           - **CSV**: Spreadsheet format, good for Excel/data analysis
+
+                        2. **Export**: Click "📥 Export Graph Data"
+
+                        3. **Use Exported Data**:
+                           - Copy from text box and save to file
+                           - Import into other tools
+                           - Use for backups or sharing
+
+                        **💡 Example Use Cases:**
+
+                        *Example 1: Backup Your Research Graph*
+                        ```
+                        Format: JSON
+                        Action: Export → Save to "my_research_graph_backup_2024.json"
+                        Use Case: Version control, disaster recovery
+                        ```
+
+                        *Example 2: Analyze in Excel/Python*
+                        ```
+                        Format: CSV
+                        Action: Export → Import into pandas/Excel
+                        Use Case: Statistical analysis, custom visualizations
+                        ```
+
+                        *Example 3: Share with Collaborators*
+                        ```
+                        Format: JSON
+                        Action: Export → Send file to team
+                        Use Case: Collaborative research, knowledge sharing
+                        ```
+
+                        **📊 Format Comparison:**
+
+                        **JSON Format:**
+                        ```json
+                        {
+                          "nodes": [
+                            {
+                              "id": "paper_1",
+                              "type": "Paper",
+                              "title": "Attention Is All You Need",
+                              "authors": ["Vaswani", "Shazeer"],
+                              "year": 2017,
+                              "citations": 50000
+                            },
+                            {
+                              "id": "author_1",
+                              "type": "Author",
+                              "name": "Ashish Vaswani"
+                            }
+                          ],
+                          "edges": [
+                            {
+                              "source": "paper_2",
+                              "target": "paper_1",
+                              "type": "CITES",
+                              "weight": 1.0
+                            }
+                          ]
+                        }
+                        ```
+
+                        **Advantages:**
+                        - Preserves all node/edge properties
+                        - Easy to parse programmatically
+                        - Standard format for graph tools
+                        - Supports nested data structures
+
+                        **CSV Format:**
+                        ```csv
+                        nodes.csv:
+                        id,type,title,authors,year
+                        paper_1,Paper,"Attention Is All You Need","Vaswani;Shazeer",2017
+                        author_1,Author,,"Ashish Vaswani",
+
+                        edges.csv:
+                        source,target,type,weight
+                        paper_2,paper_1,CITES,1.0
+                        ```
+
+                        **Advantages:**
+                        - Easy to import into Excel/spreadsheets
+                        - Simple text format
+                        - Good for statistical analysis
+                        - Compatible with many tools
+
+                        **🔧 What Gets Exported:**
+
+                        **Nodes:**
+                        - Paper nodes: title, authors, year, abstract, keywords, citations
+                        - Author nodes: name, affiliations, paper count
+                        - Concept nodes: term, frequency, related papers
+                        - Institution nodes: name, location
+
+                        **Edges:**
+                        - CITES: Citation relationships between papers
+                        - AUTHORED_BY: Authorship connections
+                        - CO_AUTHORED: Author collaboration
+                        - MENTIONS: Paper-concept relationships
+                        - AFFILIATED_WITH: Author-institution links
+
+                        **📝 Usage Examples:**
+
+                        **Python Analysis:**
+                        ```python
+                        import json
+                        import pandas as pd
+
+                        # Load JSON export
+                        with open('graph_export.json') as f:
+                            graph = json.load(f)
+
+                        # Convert to DataFrame
+                        papers = pd.DataFrame(graph['nodes'])
+                        citations = pd.DataFrame(graph['edges'])
+
+                        # Analyze
+                        print(papers['year'].value_counts())
+                        print(f"Total citations: {len(citations)}")
+                        ```
+
+                        **Import to Gephi:**
+                        1. Export as JSON
+                        2. Open Gephi
+                        3. File → Import → JSON file
+                        4. Visualize and analyze
+
+                        **Import to Cytoscape:**
+                        1. Export as CSV
+                        2. Open Cytoscape
+                        3. Import Network from File
+                        4. Map columns to node/edge attributes
+
+                        **📏 Export Size Estimates:**
+                        - Small graph (50 nodes): ~5-10 KB JSON
+                        - Medium graph (500 nodes): ~50-100 KB JSON
+                        - Large graph (5000 nodes): ~500 KB - 1 MB JSON
+                        - CSV is typically 50-70% of JSON size
+
+                        **📝 Tips:**
+                        - Use JSON for complete data preservation
+                        - Use CSV for quick Excel analysis
+                        - Export regularly as backups
+                        - Large graphs may take 5-10 seconds to export
+                        - Save exports with timestamps for version tracking
+                        """)
 
                         export_format = gr.Dropdown(
                             choices=["json", "csv"],
@@ -1273,22 +1737,28 @@ def create_unified_ui(system=None):
                     # LLM Settings (Enhanced)
                     with gr.TabItem("🤖 LLM Model"):
                         gr.Markdown("#### Select Language Model")
+                        gr.Markdown("""
+                        **Supports both Local and Cloud LLMs:**
+                        - **Local**: Ollama (localhost:11434), LM Studio (localhost:1234)
+                        - **Cloud**: OpenRouter, OpenAI
+                        """)
 
                         with gr.Row():
                             with gr.Column():
                                 llm_provider = gr.Dropdown(
                                     label="LLM Provider",
                                     choices=["ollama", "lmstudio", "openrouter", "openai"],
-                                    value="ollama",
-                                    info="Select your LLM provider"
+                                    value=os.getenv("LLM_PROVIDER", "ollama"),
+                                    info="Select your LLM provider (local or cloud)"
                                 )
 
                                 # API Key input (hidden for local providers)
                                 llm_api_key = gr.Textbox(
                                     label="API Key (for OpenRouter/OpenAI)",
                                     type="password",
+                                    value=os.getenv("OPENROUTER_API_KEY", "") if os.getenv("LLM_PROVIDER") == "openrouter" else os.getenv("OPENAI_API_KEY", ""),
                                     placeholder="Enter API key if using OpenRouter or OpenAI",
-                                    visible=False
+                                    visible=os.getenv("LLM_PROVIDER") in ["openrouter", "openai"]
                                 )
 
                                 with gr.Row():
@@ -1807,17 +2277,22 @@ Settings applied immediately."""
                                 )
 
                                 gr.Markdown("##### Neo4j Connection Settings")
+                                gr.Markdown("""
+                                **Supports both Local and Cloud Neo4j:**
+                                - **Local**: `neo4j://127.0.0.1:7687` or `bolt://localhost:7687`
+                                - **Cloud (Aura)**: `neo4j+s://xxxxx.databases.neo4j.io`
+                                """)
 
                                 neo4j_uri = gr.Textbox(
                                     label="Neo4j URI",
-                                    value="neo4j://127.0.0.1:7687",
-                                    placeholder="neo4j://127.0.0.1:7687",
-                                    info="Neo4j database URI"
+                                    value=os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687"),
+                                    placeholder="neo4j://127.0.0.1:7687 or neo4j+s://xxxxx.databases.neo4j.io",
+                                    info="Neo4j database URI (supports local and cloud)"
                                 )
 
                                 neo4j_username = gr.Textbox(
                                     label="Username",
-                                    value="neo4j",
+                                    value=os.getenv("NEO4J_USER", "neo4j"),
                                     placeholder="neo4j",
                                     info="Neo4j username"
                                 )
@@ -1825,6 +2300,7 @@ Settings applied immediately."""
                                 neo4j_password = gr.Textbox(
                                     label="Password",
                                     type="password",
+                                    value=os.getenv("NEO4J_PASSWORD", ""),
                                     placeholder="Enter your Neo4j password",
                                     info="Neo4j password"
                                 )
