@@ -460,13 +460,13 @@ Provide a concise, accurate answer based on the evidence above."""
 if __name__ == "__main__":
     import os
     import sys
-    
-    # Add parent directory to path
+
+    # Add parent directory to path for standalone testing
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    
-    from src.graphrag.core.graph_manager import GraphManager
-    from src.graphrag.core.vector_search import VectorSearch
-    from src.graphrag.ml.gnn_manager import GNNManager
+
+    from graphrag.core.graph_manager import GraphManager
+    from graphrag.core.vector_search import VectorSearch
+    from graphrag.ml.gnn_manager import GNNManager
     
     print("=" * 80)
     print("GNN-Enhanced Query Engine Test")

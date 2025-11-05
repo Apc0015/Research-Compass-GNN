@@ -576,11 +576,11 @@ class GNNExplainer:
 if __name__ == "__main__":
     import os
     import sys
-    
-    # Add parent directory to path
+
+    # Add parent directory to path for standalone testing
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    
-    from src.graphrag.ml.gnn_manager import GNNManager
+
+    from graphrag.ml.gnn_manager import GNNManager
     
     print("=" * 80)
     print("GNN Explainer Test")
