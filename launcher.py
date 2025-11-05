@@ -34,6 +34,9 @@ sys.path.insert(0, str(project_root))
 # Load environment variables from .env file
 load_dotenv(override=True)
 
+# Import unified configuration
+from config.config_manager import get_config_manager, get_config
+
 
 def setup_dev_mode():
     """Setup auto-reload monitoring for development mode."""
@@ -134,11 +137,23 @@ def print_banner(dev_mode=False, port=7860, share=False):
 
 
 def initialize_system():
-    """Initialize the AcademicRAGSystem."""
+    """Initialize the AcademicRAGSystem with unified configuration."""
     try:
+        # Initialize unified configuration
+        config_manager = get_config_manager()
+        config = config_manager.config
+        
+        print("⏳ Initializing unified configuration...")
+        print(f"   Environment: {config.system.environment}")
+        print(f"   LLM Provider: {config.llm.provider}")
+        print(f"   Model: {config.llm.model}")
+        print(f"   Database: {config.database.uri}")
+        
         from src.graphrag.core.academic_rag_system import AcademicRAGSystem
         print("⏳ Initializing AcademicRAGSystem...")
-        system = AcademicRAGSystem()
+        
+        # Pass unified config to AcademicRAGSystem
+        system = AcademicRAGSystem(config=config.to_dict())
         print("✅ System initialized successfully\n")
         return system
     except Exception as e:
@@ -163,28 +178,45 @@ Examples:
     parser.add_argument(
         '--port',
         type=int,
-        default=7860,
-        help='Port to run on (default: 7860)'
+        default=None,  # Use config default
+        help='Port to run on (overrides config)'
     )
     parser.add_argument(
         '--share',
         action='store_true',
-        help='Create public Gradio link'
+        help='Create public Gradio link (overrides config)'
     )
     parser.add_argument(
         '--dev',
         action='store_true',
-        help='Enable development mode with auto-reload'
+        help='Enable development mode with auto-reload (overrides config)'
+    )
+    parser.add_argument(
+        '--config',
+        type=str,
+        help='Path to configuration file'
     )
 
     args = parser.parse_args()
 
-    # Print banner
-    print_banner(dev_mode=args.dev, port=args.port, share=args.share)
+    # Initialize configuration with custom config file if provided
+    if args.config:
+        config_manager = get_config_manager(args.config)
+        config = config_manager.config
+    else:
+        config = get_config()
+
+    # Override config with command line arguments
+    port = args.port if args.port is not None else config.ui.port
+    share = args.share if args.share is not None else config.ui.share
+    dev_mode = args.dev if args.dev is not None else config.system.auto_reload
+
+    # Print banner with unified config
+    print_banner(dev_mode=dev_mode, port=port, share=share)
 
     # Setup dev mode if requested
     observer = None
-    if args.dev:
+    if dev_mode:
         print("👀 Setting up file monitoring...")
         observer = setup_dev_mode()
 
@@ -196,7 +228,7 @@ Examples:
     from src.graphrag.ui.unified_launcher import launch_unified_ui
 
     try:
-        launch_unified_ui(system=system, port=args.port, share=args.share)
+        launch_unified_ui(system=system, port=port, share=share)
     except KeyboardInterrupt:
         print("\n\n👋 Shutting down gracefully...")
         if observer:

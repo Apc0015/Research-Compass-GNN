@@ -4,8 +4,14 @@ GNN Evaluator - Comprehensive evaluation framework for Graph Neural Networks
 Provides metrics, benchmarks, and analysis for GNN model performance.
 """
 
+# Standard library imports
 from typing import Dict, List, Tuple, Optional, Any
+from pathlib import Path
+import json
 import logging
+import time
+
+# Third-party imports
 import numpy as np
 import torch
 import torch.nn as nn
@@ -14,9 +20,6 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
-import json
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -564,10 +567,11 @@ class GNNEvaluationMetrics:
         try:
             from sklearn.metrics import silhouette_score
             return silhouette_score(
-                embeddings.cpu().numpy(), 
+                embeddings.cpu().numpy(),
                 labels.cpu().numpy()
             )
         except ImportError:
+            logger.warning("sklearn not available for silhouette coefficient calculation")
             return 0.0
     
     def _compute_mean_reciprocal_rank(

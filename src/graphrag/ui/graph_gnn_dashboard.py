@@ -409,7 +409,8 @@ class GraphGNNDashboard:
                 else:
                     from src.graphrag.ml.gnn_manager import GNNManager
                     gnn_mgr = GNNManager(self.system.graph)
-            except ImportError:
+            except ImportError as e:
+                logger.warning(f"GNN Manager not available: {e}")
                 return {
                     "status": "error",
                     "message": "PyTorch Geometric not installed. Install with: pip install torch torch-geometric"

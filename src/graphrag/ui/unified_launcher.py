@@ -1211,24 +1211,45 @@ def create_unified_ui(system=None):
             with gr.TabItem("🔍 Research Assistant"):
                 gr.Markdown("### Ask questions with streaming responses, caching, and GNN reasoning")
                 gr.Markdown("""
-                **Instructions:**
-                1. Type your research question in the text box
-                2. Enable "Use GNN reasoning" for graph-aware analysis
-                3. Enable "Use cache" for faster repeated queries (10-100x speedup)
-                4. Enable "Stream response" to see answers word-by-word in real-time
-                5. Click "Ask" to get your answer
-                
-                **Example Questions:**
-                - "What are the main innovations in transformer architecture?"
+                **🎯 Purpose:**
+                An intelligent Q&A system that answers research questions using your uploaded papers, knowledge graph, and optional GNN-powered reasoning.
+
+                **📋 Step-by-Step Instructions:**
+                1. **Type Your Question**: Enter a research question (be specific for better answers)
+                2. **Configure Options**:
+                   - ✅ **Use GNN reasoning**: Graph-aware analysis (+30% accuracy)
+                   - ✅ **Use cache**: 10-100x speedup for repeated queries
+                   - ✅ **Stream response**: Real-time word-by-word display
+                3. **Ask**: Click "Ask" button
+                4. **Review**: Check Answer, Confidence, Sources, and Reasoning Visualization
+
+                **💡 Example Questions:**
+
+                *Comparisons:*
                 - "How does BERT differ from GPT models?"
-                - "What are recent advances in Graph Neural Networks?"
+                - "What are the advantages of GAT over GCN?"
+
+                *Summaries:*
                 - "Summarize the key contributions of the Attention Is All You Need paper"
-                - "What are the applications of Graph Attention Networks?"
-                
-                **Tips:**
-                - GNN reasoning provides more accurate answers by using graph structure
-                - Cache saves time for similar questions
-                - More specific questions get better answers
+                - "What problem does the BERT paper solve?"
+
+                *Concepts:*
+                - "What are the main innovations in transformer architecture?"
+                - "Explain how attention mechanisms work"
+                - "What are recent advances in Graph Neural Networks?"
+
+                **📊 Confidence Score Guide:**
+                - **90-100%**: Very high confidence, well-supported by sources
+                - **70-89%**: High confidence, good evidence
+                - **50-69%**: Moderate confidence, some uncertainty
+                - **30-49%**: Low confidence, limited information
+
+                **📝 Tips:**
+                - Upload relevant papers first for better answers
+                - GNN reasoning best for citation/relationship questions
+                - Cache saves time during literature review sessions
+                - Check sources to verify answer accuracy
+                - More papers in graph = better answers
                 """)
 
                 with gr.Row():
@@ -1331,24 +1352,84 @@ def create_unified_ui(system=None):
                     outputs=[cache_status]
                 )
 
-            # ========== TAB 3: Temporal Analysis ==========
+            # ========== TAB 4: Temporal Analysis ==========
             with gr.TabItem("📊 Temporal Analysis"):
                 gr.Markdown("### Analyze how research evolves over time")
                 gr.Markdown("""
-                **Instructions:**
-                Use these tools to track research trends, citation patterns, and emerging topics over time.
-                
-                **Available Analysis Types:**
-                1. **Topic Evolution** - Track how a research topic grows over time
-                2. **Citation Velocity** - Measure how quickly a paper accumulates citations
-                3. **H-Index Timeline** - Track an author's research impact over years
-                4. **Emerging Topics** - Discover new and rapidly growing research areas
-                
-                **Examples:**
-                - Topic Evolution: "Graph Neural Networks" with yearly window
-                - Citation Velocity: Enter a paper title from your uploaded documents
-                - H-Index Timeline: Enter author name (e.g., "Yoshua Bengio")
-                - Emerging Topics: Set year to 2020 and threshold to 0.5
+                **🎯 Purpose:**
+                Track research trends, citation patterns, author impact, and emerging topics over time. Identify hot areas, measure paper influence, and discover new research directions.
+
+                **📋 Available Analysis Types:**
+
+                **1. Topic Evolution**
+                - **What it does**: Tracks how many papers on a topic are published over time
+                - **Use case**: Identify growing/declining research areas
+                - **Example**: "Graph Neural Networks" → See exponential growth from 2015-2024
+
+                **2. Citation Velocity**
+                - **What it does**: Measures how quickly a paper gains citations
+                - **Use case**: Predict future impact, identify seminal papers
+                - **Example**: High-velocity paper = 50+ cites in first year
+
+                **3. H-Index Timeline**
+                - **What it does**: Calculates author's h-index progression over years
+                - **Use case**: Track researcher career trajectory
+                - **Example**: Author h-index grows from 5 (2010) to 45 (2024)
+
+                **💡 Example Use Cases:**
+
+                *Track Emerging Field:*
+                ```
+                Tab: Topic Evolution
+                Topic: "Large Language Models"
+                Time Window: Yearly
+                Result: See explosion from 2020 onwards, exponential growth
+                ```
+
+                *Measure Paper Impact:*
+                ```
+                Tab: Citation Velocity
+                Paper: "Attention Is All You Need"
+                Result: 100 citations/month, identifies as breakthrough paper
+                ```
+
+                *Analyze Author Career:*
+                ```
+                Tab: H-Index Timeline
+                Author: "Geoffrey Hinton"
+                Result: H-index timeline shows consistent growth, peak influence periods
+                ```
+
+                **⚙️ Parameters:**
+
+                **Time Window:**
+                - **Monthly**: Fine-grained, good for very recent trends (2023-2024)
+                - **Quarterly**: Balanced, smooths out noise
+                - **Yearly**: Long-term trends, best for historical analysis
+
+                **📊 Interpreting Results:**
+
+                **Topic Evolution:**
+                - Upward trend: Growing research area, more attention
+                - Plateau: Mature field, stable interest
+                - Decline: Possibly superseded by newer methods
+
+                **Citation Velocity:**
+                - High (>50 cites/year): Influential, seminal work
+                - Medium (10-50 cites/year): Solid contribution
+                - Low (<10 cites/year): Niche or too recent
+
+                **H-Index:**
+                - Steady growth: Consistent researcher
+                - Rapid growth: Breakthrough period
+                - Plateau: Established researcher, maintained impact
+
+                **📝 Tips:**
+                - Upload papers with year metadata for accurate analysis
+                - Use yearly window for 5+ year trends
+                - Monthly window best for very recent work (< 2 years)
+                - Citation velocity requires citation metadata
+                - More papers in database = more accurate trends
                 """)
 
                 with gr.Tab("Topic Evolution"):
@@ -1435,30 +1516,140 @@ def create_unified_ui(system=None):
                         outputs=[h_index_output]
                     )
 
-            # ========== TAB 4: Personalized Recommendations ==========
+            # ========== TAB 5: Personalized Recommendations ==========
             with gr.TabItem("💡 Recommendations"):
                 gr.Markdown("### Get personalized paper recommendations")
                 gr.Markdown("""
-                **Instructions:**
-                1. Create your user profile with research interests and reading history
-                2. List papers you've read (use titles from uploaded documents)
-                3. List papers you liked (helps improve recommendations)
-                4. Specify your research interests (e.g., "machine learning, GNN, transformers")
-                5. Click "Create/Update Profile" to save your profile
-                6. Adjust diversity slider (0 = similar papers, 1 = exploratory/diverse)
-                7. Click "Get Recommendations" to get personalized suggestions
-                
-                **Example Profile:**
-                - User ID: "researcher123"
-                - Papers Read: "Attention Is All You Need, BERT, GPT-3"
-                - Papers Liked: "Attention Is All You Need"
-                - Interests: "transformers, natural language processing, deep learning"
-                - Diversity: 0.3 (balanced between similar and exploratory)
-                
-                **Tips:**
-                - Higher diversity shows more varied papers outside your usual topics
-                - Lower diversity focuses on papers very similar to your interests
-                - Update your profile as you read more papers for better recommendations
+                **🎯 Purpose:**
+                Get personalized paper recommendations based on your reading history, interests, and preferences. Uses collaborative filtering + content-based algorithms to suggest relevant papers you haven't read yet.
+
+                **📋 Step-by-Step Instructions:**
+
+                **Part 1: Create User Profile**
+                1. **User ID**: Choose a unique identifier (e.g., "researcher123", your name)
+                2. **Papers Read**: List papers you've already read (comma-separated titles from your database)
+                3. **Papers Liked**: List papers you particularly enjoyed or found useful
+                4. **Research Interests**: Keywords describing your research focus (comma-separated)
+                5. **Create/Update Profile**: Click button to save your profile
+
+                **Part 2: Get Recommendations**
+                6. **Number of Recommendations**: How many papers to suggest (5-20)
+                7. **Diversity Weight**: Slider from 0 (similar) to 1 (exploratory)
+                   - 0.0-0.2: Very similar to what you've read (safe choices)
+                   - 0.3-0.5: Balanced mix (recommended)
+                   - 0.6-1.0: Exploratory, outside your usual topics (discovery mode)
+                8. **Get Recommendations**: Click to receive personalized suggestions
+
+                **💡 Example Profiles:**
+
+                *Focused Researcher (Low Diversity):*
+                ```
+                User ID: "alice_nlp"
+                Papers Read: "BERT, GPT-2, RoBERTa, ALBERT"
+                Papers Liked: "BERT, GPT-2"
+                Interests: "transformers, natural language processing, pretraining"
+                Diversity: 0.2
+
+                Result: Suggests GPT-3, ELECTRA, T5 (all transformer-based NLP)
+                Use Case: Deep dive into specific area
+                ```
+
+                *Exploratory Researcher (High Diversity):*
+                ```
+                User ID: "bob_explorer"
+                Papers Read: "Attention Is All You Need, GCN"
+                Papers Liked: "Attention Is All You Need"
+                Interests: "neural networks, deep learning"
+                Diversity: 0.7
+
+                Result: Suggests papers from NLP, CV, GNNs, RL (varied topics)
+                Use Case: Discover cross-disciplinary connections
+                ```
+
+                *Balanced Researcher (Medium Diversity):*
+                ```
+                User ID: "carol_balanced"
+                Papers Read: "GCN, GAT, GraphSAGE"
+                Papers Liked: "GAT"
+                Interests: "graph neural networks, representation learning"
+                Diversity: 0.3
+
+                Result: Mix of GNN papers + related areas (attention, message passing)
+                Use Case: Stay in field but explore adjacent topics
+                ```
+
+                **⚙️ How It Works:**
+
+                **Algorithm Combination:**
+                1. **Content-Based**: Finds papers similar to ones you liked (based on text, concepts)
+                2. **Collaborative Filtering**: "Users who read X also read Y"
+                3. **Graph-Based**: Papers cited by/citing papers you liked
+                4. **Diversity Injection**: Adds varied papers based on diversity weight
+
+                **Recommendation Score:**
+                - Relevance Score (0-1): How well paper matches your profile
+                - Higher score = stronger match
+                - Score considers: reading history, likes, interests, citations
+
+                **📊 Diversity Weight Explained:**
+
+                | Weight | Behavior | Example Result |
+                |--------|----------|----------------|
+                | **0.0** | Pure exploitation | Papers almost identical to what you've read |
+                | **0.2** | Low diversity | Variations within same sub-field |
+                | **0.3-0.5** | Balanced | Main field + adjacent areas |
+                | **0.7** | High diversity | Cross-disciplinary suggestions |
+                | **1.0** | Pure exploration | Potentially unrelated but interesting papers |
+
+                **📝 Tips for Best Results:**
+
+                **Profile Creation:**
+                - Include 3-5 papers you've read for minimum viable profile
+                - List 1-3 "liked" papers (most influential to you)
+                - Use 3-5 interest keywords (not too broad, not too narrow)
+                - Update profile regularly as you read more
+
+                **Getting Recommendations:**
+                - Start with diversity 0.3 for balanced results
+                - Increase diversity when feeling stuck or want new ideas
+                - Decrease diversity when doing deep literature review
+                - Request 10-15 recommendations for good variety
+
+                **Profile Management:**
+                - Create multiple profiles for different research projects
+                - Update "Papers Read" list after each session
+                - Refresh recommendations as your interests evolve
+                - Liked papers have 3x more influence than just read papers
+
+                **💡 Use Cases:**
+
+                *Literature Review:*
+                ```
+                Diversity: 0.2
+                Goal: Find all relevant papers in narrow area
+                Strategy: Low diversity ensures comprehensive coverage
+                ```
+
+                *Research Inspiration:*
+                ```
+                Diversity: 0.7
+                Goal: Find novel connections and ideas
+                Strategy: High diversity reveals unexpected connections
+                ```
+
+                *Stay Updated:*
+                ```
+                Diversity: 0.4
+                Goal: Keep current with field developments
+                Strategy: Medium diversity balances core + adjacent work
+                ```
+
+                **🔧 Troubleshooting:**
+                - **No recommendations**: Need more papers in database, try lower diversity
+                - **Recommendations not relevant**: Update profile with more specific interests
+                - **Too similar recommendations**: Increase diversity weight
+                - **Too random recommendations**: Decrease diversity weight
+                - **Error: User not found**: Create profile first before getting recommendations
                 """)
 
                 with gr.Row():
@@ -1541,9 +1732,99 @@ def create_unified_ui(system=None):
                     outputs=[recommendations_output]
                 )
 
-            # ========== TAB 5: Citation Explorer ==========
+            # ========== TAB 6: Citation Explorer ==========
             with gr.TabItem("🕸️ Citation Explorer"):
                 gr.Markdown("### Explore citation networks interactively")
+                gr.Markdown("""
+                **🎯 Purpose:**
+                Visualize citation chains starting from a specific paper. Explore forward citations (who cites this paper), backward citations (what this paper cites), or both. Discover citation cascades and research impact.
+
+                **📋 Step-by-Step Instructions:**
+                1. **Paper ID**: Enter the title or ID of a paper from your database
+                2. **Max Depth**: How many citation hops to explore (1-5)
+                   - Depth 1: Direct citations only
+                   - Depth 2: Citations + their citations (recommended)
+                   - Depth 3+: Extended network (can get large)
+                3. **Direction**: Choose exploration direction
+                   - **Forward**: Papers that cite this paper (impact)
+                   - **Backward**: Papers this paper cites (foundations)
+                   - **Both**: Complete citation context (recommended)
+                4. **Explore**: Click button to generate interactive visualization
+
+                **💡 Example Use Cases:**
+
+                *Measure Paper Impact:*
+                ```
+                Paper: "Attention Is All You Need"
+                Max Depth: 2
+                Direction: Forward
+
+                Result: See BERT, GPT-2, GPT-3, and hundreds of papers citing it
+                Interpretation: Foundational paper with massive impact
+                ```
+
+                *Trace Research Origins:*
+                ```
+                Paper: "BERT"
+                Max Depth: 2
+                Direction: Backward
+
+                Result: See transformer paper, ELMo, Word2Vec foundations
+                Interpretation: Builds on attention + word embeddings
+                ```
+
+                *Full Citation Context:*
+                ```
+                Paper: "Graph Attention Networks"
+                Max Depth: 2
+                Direction: Both
+
+                Result: See GCN foundation + GAT applications
+                Interpretation: Understand paper's place in research evolution
+                ```
+
+                **⚙️ Parameter Guide:**
+
+                **Max Depth:**
+                | Depth | Nodes | Best For | Example |
+                |-------|-------|----------|---------|
+                | **1** | 5-20 | Quick overview | Direct citations only |
+                | **2** | 20-100 | Standard analysis | Recommended default |
+                | **3** | 100-500 | Deep dive | Extended network |
+                | **4-5** | 500+ | Research history | May be overwhelming |
+
+                **Direction:**
+                - **Forward (Impact)**: Who built on this work? How influential is it?
+                - **Backward (Context)**: What does this work build on? Research foundations?
+                - **Both (Complete)**: Full citation context, bidirectional view
+
+                **📊 Interpreting Visualizations:**
+
+                **Network Patterns:**
+                - **Hub (many forward citations)**: Influential/seminal paper
+                - **Bridge (connects clusters)**: Cross-disciplinary work
+                - **Chain (linear citations)**: Incremental improvements
+                - **Star (many backward citations)**: Survey/review paper
+
+                **Citation Density:**
+                - Dense network: Active, well-connected research area
+                - Sparse network: Niche topic or emerging field
+                - Clustering: Research communities/sub-fields
+
+                **📝 Tips:**
+                - Start with depth 2, direction "both" for balanced view
+                - Forward citations show impact and influence
+                - Backward citations reveal theoretical foundations
+                - Click nodes in visualization to see paper details
+                - Zoom and pan to navigate large networks
+                - Look for bridge papers connecting different areas
+
+                **🔧 Troubleshooting:**
+                - **No citations found**: Paper not in database or has no citations
+                - **Visualization too large**: Reduce max depth
+                - **Slow loading**: Depth 4+ can take 10-30 seconds
+                - **Empty result**: Check paper ID spelling, try partial title match
+                """)
 
                 paper_id_cite = gr.Textbox(label="Paper ID")
                 max_depth = gr.Slider(minimum=1, maximum=5, value=2, step=1, label="Max Depth")
@@ -1574,11 +1855,95 @@ def create_unified_ui(system=None):
                     outputs=[citation_viz]
                 )
 
-            # ========== TAB 6: Discovery ==========
+            # ========== TAB 7: Discovery ==========
             with gr.TabItem("🔬 Discovery"):
                 gr.Markdown("### Discover unexpected connections")
+                gr.Markdown("""
+                **🎯 Purpose:**
+                Find hidden connections between research papers. Discover similar work based on semantic content (not just citations), and identify cross-disciplinary opportunities where different fields tackle similar problems.
+
+                **📋 Two Discovery Modes:**
+
+                **1. Similar Papers**
+                - Finds papers with similar content/concepts using embeddings
+                - Works even without citation relationships
+                - Great for finding related work you might have missed
+
+                **2. Cross-Disciplinary Connections**
+                - Discovers papers from different fields with similar ideas
+                - Identifies potential knowledge transfer opportunities
+                - Reveals unexpected methodological parallels
+
+                **💡 When to Use Each:**
+
+                **Similar Papers:**
+                - Literature review (find everything on your topic)
+                - Validate your approach (see what others did)
+                - Find contemporary work (recent papers without citations yet)
+                - Discover papers you should have cited
+
+                **Cross-Disciplinary:**
+                - Get inspiration from other fields
+                - Find novel applications of your methods
+                - Identify research gaps at field intersections
+                - Discover transferable techniques
+                """)
 
                 with gr.Tab("Similar Papers"):
+                    gr.Markdown("""
+                    **📋 Instructions:**
+                    1. **Paper ID**: Enter title or ID of a paper from your database
+                    2. **Similarity Method**: Choose distance metric
+                       - **Cosine**: Standard, works well for most cases (recommended)
+                       - **Euclidean**: Geometric distance, good for dense embeddings
+                       - **Dot Product**: Fast, good for normalized embeddings
+                    3. **Find Similar Papers**: Click to get results
+
+                    **💡 Example Use Cases:**
+
+                    *Find Related Work:*
+                    ```
+                    Paper ID: "Graph Attention Networks"
+                    Method: Cosine
+
+                    Result:
+                    1. "Graph Convolutional Networks" (similarity: 0.92)
+                    2. "Message Passing Neural Networks" (0.89)
+                    3. "Attention Is All You Need" (0.87)
+
+                    Interpretation: GAT is semantically close to GCN + attention mechanisms
+                    ```
+
+                    *Validate Approach:*
+                    ```
+                    Paper ID: "Your New Paper"
+                    Method: Cosine
+
+                    Result: Shows papers with similar approaches
+                    Use: Check if your method is novel or incremental
+                    ```
+
+                    **⚙️ Similarity Method Comparison:**
+
+                    | Method | Range | Best For | Speed |
+                    |--------|-------|----------|-------|
+                    | **Cosine** | 0-1 | General purpose, sparse data | Fast |
+                    | **Euclidean** | 0-∞ | Dense embeddings, magnitude matters | Fast |
+                    | **Dot Product** | -∞-∞ | Normalized embeddings | Fastest |
+
+                    **📊 Similarity Score Interpretation:**
+                    - **0.9-1.0**: Nearly identical content/topic
+                    - **0.8-0.9**: Very similar, likely same sub-field
+                    - **0.7-0.8**: Similar topic, related work
+                    - **0.6-0.7**: Loosely related
+                    - **<0.6**: Different topics (filter out)
+
+                    **📝 Tips:**
+                    - Cosine similarity recommended for most use cases
+                    - High scores (>0.85) may indicate duplicate or very close work
+                    - Medium scores (0.7-0.85) are sweet spot for related work
+                    - Works great for finding papers without citation connections
+                    """)
                     paper_id_sim = gr.Textbox(label="Paper ID")
                     similarity_method = gr.Dropdown(
                         choices=["cosine", "euclidean", "dot_product"],
@@ -1606,6 +1971,68 @@ def create_unified_ui(system=None):
                     )
 
                 with gr.Tab("Cross-Disciplinary"):
+                    gr.Markdown("""
+                    **📋 Instructions:**
+                    1. **Paper ID**: Enter title or ID of a paper from your database
+                    2. **Find Cross-Disciplinary Connections**: Click to discover papers from other fields
+
+                    **💡 Example Use Cases:**
+
+                    *Find Inspiration from Other Fields:*
+                    ```
+                    Paper ID: "Graph Neural Networks for Molecule Property Prediction"
+
+                    Result:
+                    1. "CNNs for Image Recognition" (Computer Vision)
+                    2. "RNNs for Time Series" (Signal Processing)
+                    3. "Attention for NLP" (Natural Language Processing)
+
+                    Interpretation: GNNs share architectural patterns with other domains
+                    Discovery: Techniques from CV/NLP may transfer to graph domain
+                    ```
+
+                    *Identify Knowledge Transfer:*
+                    ```
+                    Paper ID: "Attention Mechanisms in NLP"
+
+                    Result: Graph Attention Networks (GNN field)
+                    Discovery: Attention concept successfully transferred from NLP to graphs
+                    ```
+
+                    *Find Novel Applications:*
+                    ```
+                    Paper ID: "Your Method for Problem X"
+
+                    Result: Papers solving similar problems in different domains
+                    Opportunity: Apply your method to their domain for novel contribution
+                    ```
+
+                    **🔍 How It Works:**
+                    The system identifies cross-disciplinary connections by:
+                    1. Finding papers with similar methodologies but different keywords/venues
+                    2. Detecting shared problem structures across fields
+                    3. Identifying papers that bridge multiple research communities
+                    4. Looking for common mathematical foundations
+
+                    **📊 Interpreting Results:**
+                    - **Same methods, different data**: Direct application opportunity
+                    - **Different methods, same problem**: Alternative approaches to learn from
+                    - **Similar math, different context**: Fundamental connection
+                    - **Bridge papers**: Explicitly connect multiple fields
+
+                    **💡 What to Do with Cross-Disciplinary Findings:**
+                    1. **Import Techniques**: Adapt methods from other fields to your problem
+                    2. **Export Solutions**: Apply your methods to other domains
+                    3. **Collaborate**: Reach out to researchers in connected fields
+                    4. **Novel Research**: Identify unexplored intersections
+
+                    **📝 Tips:**
+                    - Look for papers with 20-40% keyword overlap (too much = same field)
+                    - Best discoveries often come from seemingly unrelated fields
+                    - Check if method assumptions transfer to new domain
+                    - Cross-disciplinary work often leads to high-impact papers
+                    - Consider joint papers with experts from discovered fields
+                    """)
                     paper_id_cross = gr.Textbox(label="Paper ID")
                     find_cross_btn = gr.Button("Find Cross-Disciplinary Connections")
                     cross_output = gr.JSON(label="Cross-Disciplinary Papers")
@@ -1667,9 +2094,156 @@ def create_unified_ui(system=None):
             #     sleeping_beauty_btn.click(compute_sleeping_beauty, inputs=[paper_id_metrics], outputs=[metrics_output])
             #     cascades_btn.click(analyze_cascades, inputs=[paper_id_metrics], outputs=[metrics_output])
 
-            # ========== TAB 7: Cache Management ==========
+            # ========== TAB 8: Cache Management ==========
             with gr.TabItem("💾 Cache Management"):
                 gr.Markdown("### View and manage cache statistics")
+                gr.Markdown("""
+                **🎯 Purpose:**
+                Monitor and manage the intelligent cache system that speeds up queries by 10-100x. View cache statistics, hit rates, memory usage, and manually clear cache when needed.
+
+                **📋 Available Actions:**
+
+                **1. Refresh Stats** (🔄)
+                - View current cache statistics
+                - See cache hit rates, entry counts, memory usage
+                - Check which namespaces are cached
+
+                **2. Clear All Cache** (🗑️)
+                - Removes all cached data
+                - Use when: System behavior seems stale, after major updates
+                - Warning: Next queries will be slower until cache rebuilds
+
+                **3. Clear Expired** (🧹)
+                - Removes only expired cache entries (past TTL)
+                - Safe operation, recommended for routine maintenance
+                - Frees memory without affecting active cache
+
+                **💡 Understanding Cache Statistics:**
+
+                **Example Output:**
+                ```json
+                {
+                  "total_entries": 150,
+                  "namespaces": {
+                    "queries": 80,
+                    "embeddings": 50,
+                    "graph_data": 20
+                  },
+                  "hit_rate": 0.75,
+                  "memory_usage_mb": 45,
+                  "expired_entries": 12
+                }
+                ```
+
+                **Metrics Explained:**
+                - **total_entries**: Number of cached items across all namespaces
+                - **namespaces**: Breakdown by cache type (queries, embeddings, etc.)
+                - **hit_rate**: 0.75 = 75% of requests served from cache (higher is better)
+                - **memory_usage_mb**: RAM used by cache (in megabytes)
+                - **expired_entries**: Items past TTL but not yet cleared
+
+                **📊 Cache Namespaces:**
+
+                | Namespace | What It Caches | TTL | Impact if Cleared |
+                |-----------|----------------|-----|-------------------|
+                | **queries** | Research Assistant answers | 30 min | Queries re-run (2-5s each) |
+                | **embeddings** | Vector representations | 24h | Papers re-embedded (~1s each) |
+                | **graph_data** | Graph statistics, viz | 1h | Graph re-analyzed (~5-10s) |
+                | **predictions** | GNN predictions | 2h | Models re-run (~1-3s) |
+                | **recommendations** | User recommendations | 30 min | Recs recalculated (~2-5s) |
+
+                **⚡ Cache Hit Rate Interpretation:**
+                - **80-100%**: Excellent, most requests cached
+                - **60-79%**: Good, cache is working well
+                - **40-59%**: Fair, queries are varied
+                - **<40%**: Low, consider increasing TTL or cache size
+
+                **💡 When to Clear Cache:**
+
+                **Clear All (🗑️):**
+                - After uploading many new papers (>20% of database)
+                - After retraining GNN models
+                - System giving stale/outdated answers
+                - After changing LLM settings
+                - Debugging: Want fresh results to test
+                - Memory usage too high (>500MB)
+
+                **Clear Expired Only (🧹):**
+                - Routine maintenance (daily/weekly)
+                - Free memory without disrupting active cache
+                - After extending sessions (remove old entries)
+                - Before long compute tasks (free RAM)
+
+                **Keep Cache (No Action):**
+                - During active research sessions
+                - When hit rate is high (>60%)
+                - System working well, no issues
+                - Memory usage acceptable
+
+                **📝 Best Practices:**
+
+                **Daily Use:**
+                1. Check cache stats at start of session
+                2. Clear expired entries if many accumulated
+                3. Monitor hit rate - should improve during session
+                4. Clear all only when necessary
+
+                **After Major Changes:**
+                1. Upload new papers → Clear "embeddings" namespace
+                2. Retrain GNN → Clear "predictions" namespace
+                3. Update LLM settings → Clear "queries" namespace
+                4. When in doubt, clear all and rebuild
+
+                **Memory Management:**
+                - Cache grows to ~1GB for large databases (500+ papers)
+                - Each query cached uses ~100-500KB
+                - Clear cache if memory usage exceeds 1GB
+                - Expired entries still use memory until cleared
+
+                **🎯 Optimization Tips:**
+
+                **Maximize Cache Benefits:**
+                - Ask similar questions during session (higher hit rate)
+                - Use same papers for multiple analyses
+                - Enable cache in Research Assistant (default)
+                - Let cache warm up over first few queries
+
+                **When Cache Hurts:**
+                - Rapidly changing data (papers added/removed frequently)
+                - Each query unique (no repeat patterns)
+                - Memory constrained systems (<4GB RAM)
+                - In these cases: Disable cache or use short TTL
+
+                **📊 Example Scenarios:**
+
+                *Scenario 1: Active Research Session*
+                ```
+                Stats: 120 entries, 85% hit rate, 60MB memory
+                Action: None - cache working great!
+                Result: Queries 10-100x faster
+                ```
+
+                *Scenario 2: After Adding 50 New Papers*
+                ```
+                Stats: 200 entries, 45% hit rate, 150MB memory
+                Action: Clear All Cache
+                Result: Next queries slower, but will use new papers
+                ```
+
+                *Scenario 3: End of Day*
+                ```
+                Stats: 180 entries, 70% hit rate, 120MB memory, 45 expired
+                Action: Clear Expired
+                Result: Freed 35MB, keep active cache
+                ```
+
+                **🔧 Troubleshooting:**
+                - **Cache stats empty**: Cache not initialized, restart application
+                - **Hit rate 0%**: Cache disabled or very first queries
+                - **High memory (>1GB)**: Clear all cache, consider reducing TTL
+                - **Stale answers**: Clear queries namespace or clear all
+                - **"Cache not available" error**: Cache system not running, check logs
+                """)
 
                 with gr.Row():
                     refresh_stats_btn = gr.Button("🔄 Refresh Stats")
@@ -1732,15 +2306,104 @@ def create_unified_ui(system=None):
             # ========== TAB 9: Settings ==========
             with gr.TabItem("⚙️ Settings"):
                 gr.Markdown("### Configure Models and System Settings")
+                gr.Markdown("""
+                **🎯 Purpose:**
+                Configure the AI models and system settings that power Research Compass. Set up LLM (language model), embedding model, cache behavior, and database connections.
+
+                **⚙️ Available Settings:**
+                1. **🤖 LLM Model**: Language model for question answering (local or cloud)
+                2. **🔢 Embedding Model**: Vector embeddings for similarity search
+                3. **💾 Cache Settings**: Cache TTL and memory limits
+                4. **🗄️ Database Connection**: Neo4j or in-memory graph database
+
+                **💡 Quick Start:**
+                - **Local Setup** (Free): Use Ollama (LLM) + HuggingFace (embeddings)
+                - **Cloud Setup** (Paid): Use OpenAI/OpenRouter (LLM) + HuggingFace (embeddings)
+                - **Hybrid** (Recommended): Local embeddings + Cloud LLM for best quality
+                """)
 
                 with gr.Tabs():
                     # LLM Settings (Enhanced)
                     with gr.TabItem("🤖 LLM Model"):
                         gr.Markdown("#### Select Language Model")
                         gr.Markdown("""
-                        **Supports both Local and Cloud LLMs:**
-                        - **Local**: Ollama (localhost:11434), LM Studio (localhost:1234)
-                        - **Cloud**: OpenRouter, OpenAI
+                        **🎯 Purpose:**
+                        Choose the language model that answers research questions. Supports local (free, private) and cloud (paid, higher quality) options.
+
+                        **📋 Supported Providers:**
+
+                        **Local (Free):**
+                        - **Ollama** (localhost:11434): Run models like llama3.2, mistral locally
+                        - **LM Studio** (localhost:1234): GUI for local models, easy setup
+
+                        **Cloud (Paid):**
+                        - **OpenRouter**: Access 100+ models (GPT-4, Claude, etc.) with single API key
+                        - **OpenAI**: Direct access to GPT-3.5, GPT-4, GPT-4 Turbo
+
+                        **📋 Setup Instructions:**
+
+                        **For Ollama (Recommended for Local):**
+                        1. Install: `brew install ollama` (Mac) or download from ollama.ai
+                        2. Start: `ollama serve` in terminal
+                        3. Pull model: `ollama pull llama3.2`
+                        4. In UI: Select "ollama", detect models, choose llama3.2
+                        5. Save settings
+
+                        **For LM Studio:**
+                        1. Download LM Studio from lmstudio.ai
+                        2. Launch app, download a model (e.g., Mistral 7B)
+                        3. Start local server in LM Studio (port 1234)
+                        4. In UI: Select "lmstudio", detect models, choose model
+                        5. Save settings
+
+                        **For OpenRouter (Best Cloud Option):**
+                        1. Get API key from openrouter.ai (requires payment)
+                        2. In UI: Select "openrouter"
+                        3. Enter API key when prompted
+                        4. Test connection, detect models
+                        5. Choose model (e.g., claude-3.5-sonnet, gpt-4)
+                        6. Save settings
+
+                        **For OpenAI:**
+                        1. Get API key from platform.openai.com (requires payment)
+                        2. In UI: Select "openai"
+                        3. Enter API key
+                        4. Test connection, choose model (gpt-4 recommended)
+                        5. Save settings
+
+                        **⚙️ Model Parameters:**
+
+                        **Temperature** (0.0-1.0):
+                        - **0.0-0.3**: Focused, deterministic (recommended for research)
+                        - **0.4-0.7**: Balanced creativity and consistency
+                        - **0.8-1.0**: Creative, varied responses
+
+                        **Max Tokens** (100-4000):
+                        - **100-500**: Short answers
+                        - **500-1000**: Standard answers (recommended)
+                        - **1000-4000**: Long, detailed responses
+
+                        **💡 Provider Comparison:**
+
+                        | Provider | Cost | Quality | Speed | Privacy | Setup |
+                        |----------|------|---------|-------|---------|-------|
+                        | **Ollama** | Free | Good | Medium | Private | Easy |
+                        | **LM Studio** | Free | Good | Medium | Private | Very Easy |
+                        | **OpenRouter** | $0.01-0.10/1K tokens | Excellent | Fast | Shared | Easy |
+                        | **OpenAI** | $0.002-0.06/1K tokens | Excellent | Fast | Shared | Easy |
+
+                        **📝 Recommendations:**
+                        - **Budget**: Ollama + llama3.2 (free, decent quality)
+                        - **Best Quality**: OpenRouter + claude-3.5-sonnet or GPT-4
+                        - **Balance**: Ollama + mistral (free, good performance)
+                        - **Privacy**: Always use local (Ollama/LM Studio)
+
+                        **🔧 Troubleshooting:**
+                        - **"Cannot connect to Ollama"**: Run `ollama serve` in terminal
+                        - **"Cannot connect to LM Studio"**: Start local server in LM Studio settings
+                        - **"Invalid API key"**: Check key, ensure billing enabled for cloud providers
+                        - **Slow responses**: Local models depend on hardware, cloud is faster
+                        - **"Model not found"**: Pull model first with `ollama pull <model>`
                         """)
 
                         with gr.Row():

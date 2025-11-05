@@ -4,12 +4,15 @@ Enhanced Graph Visualization
 Provides filtering, search, highlighting, and interactive features
 """
 
+# Standard library imports
 import os
 from pathlib import Path
 from typing import List, Dict, Optional
+import json
+
+# Third-party imports
 from neo4j import GraphDatabase
 from pyvis.network import Network
-import json
 
 # Neo4j Configuration
 NEO4J_URI = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")

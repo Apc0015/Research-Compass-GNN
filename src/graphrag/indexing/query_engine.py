@@ -19,7 +19,7 @@ except Exception:
 from src.graphrag.core.vector_search import VectorSearch
 
 
-class LlamaIndexQueryEngine:
+class QueryEngine:
     """High-level query engine that uses LlamaIndex when available.
 
     If llama-index is not installed, this class provides a thin wrapper around

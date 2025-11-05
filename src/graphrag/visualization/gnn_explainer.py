@@ -4,14 +4,17 @@ GNN Explainer - Visualization and explainability for Graph Neural Networks
 Provides insights into GNN decision-making and recommendation reasoning.
 """
 
+# Standard library imports
 from typing import Dict, List, Tuple, Optional, Any
+from pathlib import Path
+import json
 import logging
+
+# Third-party imports
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pathlib import Path
-import json
 
 logger = logging.getLogger(__name__)
 

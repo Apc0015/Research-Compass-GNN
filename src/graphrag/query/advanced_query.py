@@ -4,9 +4,12 @@ Advanced Query System
 Multi-hop reasoning, graph-based summarization, and intelligent querying
 """
 
+# Standard library imports
 import os
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
+
+# Third-party imports
 from neo4j import GraphDatabase
 from sentence_transformers import SentenceTransformer
 import numpy as np

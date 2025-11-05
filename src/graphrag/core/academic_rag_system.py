@@ -61,7 +61,24 @@ class AcademicRAGSystem:
         If no container is provided, a default container is built. This allows
         easier testing and looser coupling between components.
         """
-        self.config = config or {}
+        # Import unified configuration
+        from ...config.config_manager import get_config_manager, get_config
+        
+        if config is None:
+            # Use unified configuration
+            config_manager = get_config_manager()
+            unified_config = config_manager.config
+            self.config = unified_config.to_dict()
+        else:
+            # Use provided config (backward compatibility)
+            self.config = config
+            # For backward compatibility, create a minimal config object
+            unified_config = get_config()
+            # Update with provided config
+            for key, value in config.items():
+                if hasattr(unified_config, key):
+                    setattr(unified_config, key, value)
+        
         self.container = container or build_default_container(self.config)
 
         # Resolve core components via container

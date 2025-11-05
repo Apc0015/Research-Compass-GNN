@@ -28,7 +28,8 @@ class LLMManager:
         temperature: float = 0.3,
         max_tokens: int = 1000,
         timeout: float = 30.0,
-        max_retries: int = 2
+        max_retries: int = 2,
+        config: Optional[Dict] = None
     ):
         """
         Initialize the LLM Manager with specified provider.
@@ -42,15 +43,47 @@ class LLMManager:
             max_tokens: Maximum tokens to generate
             timeout: Request timeout in seconds
             max_retries: Number of retries on failure
+            config: Optional unified configuration dictionary
         """
-        self.provider_name = provider.lower()
-        self.model = model
-        self.base_url = base_url
-        self.api_key = api_key
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.timeout = timeout
-        self.max_retries = max_retries
+        # Import unified configuration
+        from ...config.config_manager import get_config_manager, get_config
+        
+        if config is None:
+            # Use unified configuration
+            config_manager = get_config_manager()
+            llm_config = config_manager.config.llm
+            self.provider_name = llm_config.provider.lower()
+            self.model = llm_config.model
+            self.temperature = llm_config.temperature
+            self.max_tokens = llm_config.max_tokens
+            self.timeout = llm_config.timeout
+            self.max_retries = llm_config.max_retries
+            
+            # Handle provider-specific settings
+            if self.provider_name == 'ollama':
+                self.base_url = llm_config.base_url
+            elif self.provider_name == 'lmstudio':
+                self.base_url = llm_config.base_url
+            else:
+                self.base_url = base_url
+            
+            # Handle API keys
+            if self.provider_name == 'openrouter':
+                self.api_key = llm_config.api_key
+            elif self.provider_name == 'openai':
+                self.api_key = llm_config.api_key
+            else:
+                self.api_key = api_key
+        else:
+            # Use provided config (backward compatibility)
+            self.provider_name = provider.lower()
+            self.model = model
+            self.base_url = base_url
+            self.api_key = api_key
+            self.temperature = temperature
+            self.max_tokens = max_tokens
+            self.timeout = timeout
+            self.max_retries = max_retries
 
         # Initialize the appropriate provider
         self.provider = self._create_provider()

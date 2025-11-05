@@ -1,32 +1,42 @@
 """
-GraphRAG Configuration Settings
+GraphRAG Configuration Settings - Unified Configuration System
+
+This module now uses the unified configuration manager to provide
+backward compatibility while consolidating all configuration sources.
 """
 
 import os
 from pathlib import Path
+from typing import Dict, Any
+
+# Import the unified configuration manager
+from .config_manager import get_config, get_config_manager
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Neo4j Configuration
-NEO4J_URI = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+# Get the unified configuration instance
+_config = get_config()
+
+# Neo4j Configuration (backward compatibility)
+NEO4J_URI = _config.database.uri
+NEO4J_USER = _config.database.user
+NEO4J_PASSWORD = _config.database.password
 
 # LLM Configuration - Unified Multi-Provider Support
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # ollama, lmstudio, openrouter, openai
-LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
-LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
-LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1000"))
-LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "30.0"))
+LLM_PROVIDER = _config.llm.provider
+LLM_MODEL = _config.llm.model
+LLM_TEMPERATURE = _config.llm.temperature
+LLM_MAX_TOKENS = _config.llm.max_tokens
+LLM_TIMEOUT = _config.llm.timeout
 
 # Local LLM Providers (Ollama, LM Studio)
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-LMSTUDIO_BASE_URL = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234")
+OLLAMA_BASE_URL = _config.llm.base_url
+LMSTUDIO_BASE_URL = _config.llm.base_url  # Default to same base URL
 
 # Cloud LLM Providers (OpenRouter, OpenAI)
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENROUTER_API_KEY = _config.llm.api_key
+OPENAI_API_KEY = _config.llm.api_key
 
 # Legacy support for backwards compatibility (DEPRECATED - use LLM_PROVIDER instead)
 # These variables are maintained for old code but should not be used in new code
@@ -41,40 +51,54 @@ elif _USE_OPENAI and not os.getenv("LLM_PROVIDER"):
     LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 # Embedding Model
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+EMBEDDING_MODEL_NAME = _config.embedding.model_name
 
 # Chunking Parameters
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "500"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
+CHUNK_SIZE = _config.processing.chunk_size
+CHUNK_OVERLAP = _config.processing.chunk_overlap
 
 # Retrieval Parameters
-TOP_K_CHUNKS = int(os.getenv("TOP_K_CHUNKS", "5"))
-MAX_GRAPH_DEPTH = int(os.getenv("MAX_GRAPH_DEPTH", "3"))
+TOP_K_CHUNKS = _config.processing.top_k_chunks
+MAX_GRAPH_DEPTH = _config.processing.max_graph_depth
 
 # Data Directories
-DATA_DIR = BASE_DIR / "data"
-DOCUMENTS_DIR = DATA_DIR / "documents"
-INDEX_DIR = DATA_DIR / "indices"
-CACHE_DIR = DATA_DIR / "cache"
-OUTPUT_DIR = BASE_DIR / "output"
-VISUALIZATION_DIR = OUTPUT_DIR / "visualizations"
-REPORTS_DIR = OUTPUT_DIR / "reports"
-EXPORTS_DIR = OUTPUT_DIR / "exports"
+DATA_DIR = Path(_config.paths.data_dir)
+DOCUMENTS_DIR = Path(_config.paths.documents_dir)
+INDEX_DIR = Path(_config.paths.indices_dir)
+CACHE_DIR = Path(_config.paths.cache_dir)
+OUTPUT_DIR = Path(_config.paths.output_dir)
+VISUALIZATION_DIR = Path(_config.paths.visualization_dir)
+REPORTS_DIR = Path(_config.paths.reports_dir)
+EXPORTS_DIR = Path(_config.paths.exports_dir)
 
 # Allowed file extensions
-ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx', '.doc']
+ALLOWED_EXTENSIONS = _config.processing.allowed_extensions
 
-# Create directories
-for directory in [DOCUMENTS_DIR, INDEX_DIR, CACHE_DIR, VISUALIZATION_DIR, REPORTS_DIR, EXPORTS_DIR]:
-    directory.mkdir(parents=True, exist_ok=True)
+# Create directories (using unified config manager)
+try:
+    config_manager = get_config_manager()
+    config_manager._create_directories()
+except Exception:
+    # Fallback to original directory creation
+    for directory in [DOCUMENTS_DIR, INDEX_DIR, CACHE_DIR, VISUALIZATION_DIR, REPORTS_DIR, EXPORTS_DIR]:
+        directory.mkdir(parents=True, exist_ok=True)
 
 # Gradio Configuration
-GRADIO_PORT = int(os.getenv("GRADIO_PORT", "7860"))
-GRADIO_HOST = os.getenv("GRADIO_HOST", "0.0.0.0")
-GRADIO_SHARE = os.getenv("GRADIO_SHARE", "False").lower() == "true"
+GRADIO_PORT = _config.ui.port
+GRADIO_HOST = _config.ui.host
+GRADIO_SHARE = _config.ui.share
 
 # Visualization Configuration
-VIZ_HEIGHT = "800px"
-VIZ_WIDTH = "100%"
-VIZ_BG_COLOR = "#1a1a1a"
-VIZ_FONT_COLOR = "white"
+VIZ_HEIGHT = _config.ui.height
+VIZ_WIDTH = _config.ui.width
+VIZ_BG_COLOR = _config.ui.bg_color
+VIZ_FONT_COLOR = _config.ui.font_color
+
+# Additional configuration for backward compatibility
+def get_settings() -> Dict[str, Any]:
+    """Get all settings as a dictionary (backward compatibility)."""
+    return _config.to_dict()
+
+def get_setting(key: str, default: Any = None) -> Any:
+    """Get a specific setting by key (backward compatibility)."""
+    return _config.get(key, default)

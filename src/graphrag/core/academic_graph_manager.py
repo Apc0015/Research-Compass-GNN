@@ -6,13 +6,16 @@ with the existing generic Entity system.
 """
 from __future__ import annotations
 
+# Standard library imports
 from typing import Dict, List, Optional
 from datetime import datetime
 import logging
 import uuid
 
+# Third-party imports
 from neo4j import GraphDatabase
 
+# Local imports
 from .graph_manager import GraphManager
 from .academic_schema import (
     PaperNode,

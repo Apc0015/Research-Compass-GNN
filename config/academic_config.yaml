@@ -1,3 +1,54 @@
+# Unified Configuration for Research Compass
+# This file consolidates all configuration settings in a structured format
+
+# Database Configuration
+database:
+  uri: "neo4j://127.0.0.1:7687"
+  user: "neo4j"
+  password: ""
+  type: "neo4j"
+  connection_pool_size: 100
+  connection_timeout: 30.0
+  max_connection_lifetime: 3600.0
+
+# LLM Configuration
+llm:
+  provider: "ollama"
+  model: "llama3.2"
+  temperature: 0.3
+  max_tokens: 1000
+  timeout: 30.0
+  max_retries: 2
+  base_url: "http://localhost:11434"
+  api_key: ""
+  use_ollama: true
+  use_openai: false
+  ollama_model: "deepseek-r1:1.5b"
+  openai_model: "gpt-4o-mini"
+
+# Embedding Configuration
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  provider: "huggingface"
+  base_url: "http://localhost:11434"
+  dimension: 384
+  batch_size: 32
+
+# Processing Configuration
+processing:
+  chunk_size: 500
+  chunk_overlap: 50
+  top_k_chunks: 5
+  max_graph_depth: 3
+  use_llama_index: true
+  chunk_strategy: "hybrid"
+  allowed_extensions: ['.pdf', '.txt', '.md', '.docx', '.doc']
+  max_file_size: 52428800  # 50MB
+  metadata_extraction:
+    use_llm_fallback: true
+    confidence_threshold: 0.7
+
+# Academic Configuration (legacy structure for backward compatibility)
 academic:
   metadata_extraction:
     use_llm_fallback: true
@@ -25,3 +76,57 @@ academic:
   citation_analysis:
     max_depth: 3
     min_citations: 5
+
+# UI Configuration
+ui:
+  port: 7860
+  host: "0.0.0.0"
+  share: false
+  server_name: "127.0.0.1"
+  preferred_port: 7860
+  height: "800px"
+  width: "100%"
+  bg_color: "#1a1a1a"
+  font_color: "white"
+  max_nodes: 200
+  layout: "force_directed"
+  node_sizing: "degree"
+
+# Cache Configuration
+cache:
+  enabled: true
+  cache_dir: "data/cache"
+  max_items: 1000
+  default_ttl: 3600
+  cleanup_interval: 300
+
+# Paths Configuration
+paths:
+  base_dir: ""
+  data_dir: "data"
+  documents_dir: "data/documents"
+  indices_dir: "data/indices"
+  cache_dir: "data/cache"
+  output_dir: "output"
+  visualization_dir: "output/visualizations"
+  reports_dir: "output/reports"
+  exports_dir: "output/exports"
+  models_dir: "models"
+  gnn_models_dir: "models/gnn"
+  chroma_dir: "./data/chroma"
+
+# System Configuration
+system:
+  environment: "development"
+  log_level: "INFO"
+  debug: false
+  auto_reload: false
+  max_workers: 4
+  request_timeout: 60.0
+  version_snapshot_enabled: true
+  max_versions: 50
+  temporal_index_enabled: true
+  default_time_window_hours: 24
+
+# Custom Configuration (for any additional settings)
+custom: {}

@@ -48,19 +48,32 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
     The factories use lazy imports to avoid heavy imports at module import time.
     """
     import os
+    from ...config.config_manager import get_config_manager, get_config
     
-    cfg = config or {}
+    # Use unified configuration manager if no config provided
+    if config is None:
+        config_manager = get_config_manager()
+        unified_config = config_manager.config
+        cfg = unified_config.to_dict()
+    else:
+        cfg = config
+        # For backward compatibility, create a minimal config object
+        unified_config = get_config()
+        # Update with provided config
+        for key, value in config.items():
+            if hasattr(unified_config, key):
+                setattr(unified_config, key, value)
+
     c = Container()
 
-    # Register config
-    c.register_singleton('config', cfg)
-    
-    # Neo4j connection details - read from environment variables OR config
-    # This allows both local and cloud Neo4j to work based on .env configuration
-    neo = cfg.get('neo4j', {})
-    neo4j_uri = neo.get('uri', cfg.get('NEO4J_URI', os.getenv('NEO4J_URI', 'neo4j://127.0.0.1:7687')))
-    neo4j_user = neo.get('user', cfg.get('NEO4J_USER', os.getenv('NEO4J_USER', 'neo4j')))
-    neo4j_password = neo.get('password', cfg.get('NEO4J_PASSWORD', os.getenv('NEO4J_PASSWORD', 'password')))
+    # Register unified config
+    c.register_singleton('config', unified_config)
+    c.register_singleton('config_dict', cfg)
+
+    # Neo4j connection details from unified config
+    neo4j_uri = unified_config.database.uri
+    neo4j_user = unified_config.database.user
+    neo4j_password = unified_config.database.password
 
     # GraphManager factory
     def _graph_factory():
@@ -69,20 +82,28 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
 
     c.register_factory('graph_manager', _graph_factory)
 
-    # DocumentProcessor factory
+    # DocumentProcessor factory with unified config
     def _docproc_factory():
         from .document_processor import DocumentProcessor
-        return DocumentProcessor()
+        processor = DocumentProcessor()
+        # Apply configuration to processor
+        processor.chunk_size = unified_config.processing.chunk_size
+        processor.chunk_overlap = unified_config.processing.chunk_overlap
+        processor.top_k_chunks = unified_config.processing.top_k_chunks
+        processor.max_graph_depth = unified_config.processing.max_graph_depth
+        processor.allowed_extensions = unified_config.processing.allowed_extensions
+        processor.metadata_extraction = unified_config.processing.metadata_extraction
+        return processor
 
     c.register_factory('document_processor', _docproc_factory)
 
-    # CacheManager factory (NEW)
+    # CacheManager factory with unified config
     def _cache_factory():
         from .cache_manager import CacheManager
         from pathlib import Path
-        cache_dir = Path(cfg.get('cache_dir', 'data/cache'))
-        max_items = cfg.get('max_cache_items', 1000)
-        ttl = cfg.get('default_cache_ttl', 3600)
+        cache_dir = Path(unified_config.cache.cache_dir)
+        max_items = unified_config.cache.max_items
+        ttl = unified_config.cache.default_ttl
         return CacheManager(cache_dir, max_items, ttl)
     
     c.register_factory('cache_manager', _cache_factory)
@@ -95,35 +116,45 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
 
     c.register_factory('academic_graph_manager', _academic_graph_factory)
     
-    # VectorSearch factory
+    # VectorSearch factory with unified config
     def _vector_search_factory():
         from .vector_search import VectorSearch
-        import os
-        model_name = os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2')
-        provider = os.getenv('EMBEDDING_PROVIDER', 'huggingface')
-        base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
-        return VectorSearch(model_name, provider, base_url)
+        return VectorSearch(
+            model_name=unified_config.embedding.model_name,
+            provider=unified_config.embedding.provider,
+            base_url=unified_config.embedding.base_url
+        )
     
     c.register_factory('vector_search', _vector_search_factory)
     
-    # LLMManager factory (NEW - for dynamic configuration updates)
+    # LLMManager factory with unified config
     def _llm_manager_factory():
         from .llm_manager import LLMManager
-        import os
-        provider = os.getenv('LLM_PROVIDER', 'ollama')
-        model = os.getenv('LLM_MODEL', 'llama3.2')
-        base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434') if provider == 'ollama' else os.getenv('LMSTUDIO_BASE_URL', 'http://localhost:1234')
-        api_key = os.getenv('OPENROUTER_API_KEY') if provider == 'openrouter' else os.getenv('OPENAI_API_KEY')
-        temperature = float(os.getenv('LLM_TEMPERATURE', '0.3'))
-        max_tokens = int(os.getenv('LLM_MAX_TOKENS', '1000'))
+        llm_config = unified_config.llm
+        
+        # Handle provider-specific settings
+        if llm_config.provider == 'ollama':
+            base_url = llm_config.base_url
+        elif llm_config.provider == 'lmstudio':
+            base_url = llm_config.base_url
+        else:
+            base_url = None
+        
+        # Handle API keys
+        if llm_config.provider == 'openrouter':
+            api_key = llm_config.api_key
+        elif llm_config.provider == 'openai':
+            api_key = llm_config.api_key
+        else:
+            api_key = None
         
         return LLMManager(
-            provider=provider,
-            model=model,
+            provider=llm_config.provider,
+            model=llm_config.model,
             base_url=base_url,
             api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens
+            temperature=llm_config.temperature,
+            max_tokens=llm_config.max_tokens
         )
     
     c.register_factory('llm_manager', _llm_manager_factory)

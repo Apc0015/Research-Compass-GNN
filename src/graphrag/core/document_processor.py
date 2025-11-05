@@ -39,17 +39,30 @@ class DocumentChunk:
 class DocumentProcessor:
     """Processes various document formats and creates text chunks."""
 
-    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50, config: Optional[Dict] = None):
         """
         Initialize the document processor.
 
         Args:
             chunk_size: Target size for each text chunk
             chunk_overlap: Number of characters to overlap between chunks
+            config: Optional unified configuration dictionary
         """
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.supported_extensions = ['.pdf', '.txt', '.md', '.docx', '.doc', '.csv']
+        # Import unified configuration
+        from ...config.config_manager import get_config_manager, get_config
+        
+        if config is None:
+            # Use unified configuration
+            config_manager = get_config_manager()
+            processing_config = config_manager.config.processing
+            self.chunk_size = processing_config.chunk_size
+            self.chunk_overlap = processing_config.chunk_overlap
+            self.supported_extensions = processing_config.allowed_extensions
+        else:
+            # Use provided config (backward compatibility)
+            self.chunk_size = chunk_size
+            self.chunk_overlap = chunk_overlap
+            self.supported_extensions = ['.pdf', '.txt', '.md', '.docx', '.doc', '.csv']
 
     def load_pdf(self, file_path: Path) -> str:
         """Extract text from PDF file."""

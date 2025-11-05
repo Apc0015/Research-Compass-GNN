@@ -20,10 +20,11 @@ class VectorSearch:
     """Manages vector embeddings and similarity search."""
 
     def __init__(
-        self, 
+        self,
         model_name: str = "all-MiniLM-L6-v2",
         provider: str = "huggingface",
-        base_url: str = "http://localhost:11434"
+        base_url: str = "http://localhost:11434",
+        config: Optional[Dict] = None
     ):
         """
         Initialize the vector search engine.
@@ -32,20 +33,34 @@ class VectorSearch:
             model_name: Model name (HuggingFace model or Ollama model)
             provider: 'huggingface' or 'ollama'
             base_url: Base URL for Ollama API (if using Ollama)
+            config: Optional unified configuration dictionary
         """
-        self.model_name = model_name
-        self.provider = provider.lower()
-        self.base_url = base_url
+        # Import unified configuration
+        from ...config.config_manager import get_config_manager, get_config
+        
+        if config is None:
+            # Use unified configuration
+            config_manager = get_config_manager()
+            embedding_config = config_manager.config.embedding
+            self.model_name = embedding_config.model_name
+            self.provider = embedding_config.provider.lower()
+            self.base_url = embedding_config.base_url
+        else:
+            # Use provided config (backward compatibility)
+            self.model_name = model_name
+            self.provider = provider.lower()
+            self.base_url = base_url
+        
         self.model = None
         
         # Initialize based on provider
         if self.provider == "huggingface":
-            self.model = SentenceTransformer(model_name)
+            self.model = SentenceTransformer(self.model_name)
         elif self.provider == "ollama":
             # Validate Ollama connection
             self._validate_ollama_connection()
         else:
-            raise ValueError(f"Unsupported provider: {provider}. Use 'huggingface' or 'ollama'")
+            raise ValueError(f"Unsupported provider: {self.provider}. Use 'huggingface' or 'ollama'")
             
         self.index = None
         self.chunks = []
