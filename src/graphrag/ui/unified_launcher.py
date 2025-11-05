@@ -975,52 +975,47 @@ def create_unified_ui(system=None):
                         outputs=[cross_output]
                     )
 
-            # ========== TAB 7: Advanced Metrics ==========
-            with gr.TabItem("📈 Advanced Metrics"):
-                gr.Markdown("### Sophisticated citation analysis")
+            # ========== TAB 7: Advanced Metrics ========== 
+            # DISABLED for GNN-focused research project
+            # This tab uses traditional graph algorithms (PageRank, Disruption Index)
+            # rather than GNN-based methods. For GNN-powered metrics, see Graph & GNN Dashboard.
+            # 
+            # To re-enable, uncomment the section below:
+            # with gr.TabItem("📈 Advanced Metrics"):
+            #     gr.Markdown("### Sophisticated citation analysis")
+            #     paper_id_metrics = gr.Textbox(label="Paper ID")
+            #     with gr.Row():
+            #         disruption_btn = gr.Button("Disruption Index")
+            #         sleeping_beauty_btn = gr.Button("Sleeping Beauty Score")
+            #         cascades_btn = gr.Button("Citation Cascades")
+            #     metrics_output = gr.JSON(label="Metrics Data")
+            #     def compute_disruption(paper_id):
+            #         if not system or not hasattr(system, 'citation_metrics'):
+            #             return {}
+            #         try:
+            #             index = system.citation_metrics.calculate_disruption_index(paper_id)
+            #             return {"disruption_index": index}
+            #         except Exception as e:
+            #             return {"error": str(e)}
+            #     def compute_sleeping_beauty(paper_id):
+            #         if not system or not hasattr(system, 'citation_metrics'):
+            #             return {}
+            #         try:
+            #             return system.citation_metrics.compute_sleeping_beauty_score(paper_id)
+            #         except Exception as e:
+            #             return {"error": str(e)}
+            #     def analyze_cascades(paper_id):
+            #         if not system or not hasattr(system, 'citation_metrics'):
+            #             return {}
+            #         try:
+            #             return system.citation_metrics.analyze_citation_cascades(paper_id)
+            #         except Exception as e:
+            #             return {"error": str(e)}
+            #     disruption_btn.click(compute_disruption, inputs=[paper_id_metrics], outputs=[metrics_output])
+            #     sleeping_beauty_btn.click(compute_sleeping_beauty, inputs=[paper_id_metrics], outputs=[metrics_output])
+            #     cascades_btn.click(analyze_cascades, inputs=[paper_id_metrics], outputs=[metrics_output])
 
-                paper_id_metrics = gr.Textbox(label="Paper ID")
-
-                with gr.Row():
-                    disruption_btn = gr.Button("Disruption Index")
-                    sleeping_beauty_btn = gr.Button("Sleeping Beauty Score")
-                    cascades_btn = gr.Button("Citation Cascades")
-
-                metrics_output = gr.JSON(label="Metrics Data")
-
-                def compute_disruption(paper_id):
-                    if not system or not hasattr(system, 'citation_metrics'):
-                        return {}
-
-                    try:
-                        index = system.citation_metrics.calculate_disruption_index(paper_id)
-                        return {"disruption_index": index}
-                    except Exception as e:
-                        return {"error": str(e)}
-
-                def compute_sleeping_beauty(paper_id):
-                    if not system or not hasattr(system, 'citation_metrics'):
-                        return {}
-
-                    try:
-                        return system.citation_metrics.compute_sleeping_beauty_score(paper_id)
-                    except Exception as e:
-                        return {"error": str(e)}
-
-                def analyze_cascades(paper_id):
-                    if not system or not hasattr(system, 'citation_metrics'):
-                        return {}
-
-                    try:
-                        return system.citation_metrics.analyze_citation_cascades(paper_id)
-                    except Exception as e:
-                        return {"error": str(e)}
-
-                disruption_btn.click(compute_disruption, inputs=[paper_id_metrics], outputs=[metrics_output])
-                sleeping_beauty_btn.click(compute_sleeping_beauty, inputs=[paper_id_metrics], outputs=[metrics_output])
-                cascades_btn.click(analyze_cascades, inputs=[paper_id_metrics], outputs=[metrics_output])
-
-            # ========== TAB 8: Cache Management ==========
+            # ========== TAB 7: Cache Management ==========
             with gr.TabItem("💾 Cache Management"):
                 gr.Markdown("### View and manage cache statistics")
 

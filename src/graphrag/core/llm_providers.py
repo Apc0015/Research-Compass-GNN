@@ -39,6 +39,9 @@ class OllamaProvider(LLMProvider):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
+        
+        # Auto-detect and fallback if model not available
+        self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Generate using Ollama API."""
@@ -99,6 +102,32 @@ class OllamaProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Failed to list Ollama models: {e}")
             return []
+    
+    def _auto_detect_model(self):
+        """Auto-detect if requested model is available, fallback to first available."""
+        try:
+            models = self.list_models()
+            if not models:
+                logger.warning(f"No Ollama models found. Please install a model with: ollama pull {self.model}")
+                return
+            
+            # Check if requested model exists
+            available_model_ids = [m['id'] for m in models]
+            
+            if self.model not in available_model_ids:
+                # Model not found, use first available
+                fallback_model = models[0]['id']
+                logger.warning(
+                    f"Requested model '{self.model}' not found in Ollama. "
+                    f"Auto-switching to '{fallback_model}'. "
+                    f"Available models: {', '.join(available_model_ids)}"
+                )
+                self.model = fallback_model
+            else:
+                logger.info(f"✓ Ollama model '{self.model}' is available")
+                
+        except Exception as e:
+            logger.warning(f"Could not auto-detect Ollama models: {e}")
 
 
 class LMStudioProvider(LLMProvider):
@@ -110,6 +139,9 @@ class LMStudioProvider(LLMProvider):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
+        
+        # Auto-detect and fallback if model not available
+        self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Generate using LM Studio API (OpenAI-compatible)."""
@@ -166,6 +198,32 @@ class LMStudioProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Failed to list LM Studio models: {e}")
             return []
+    
+    def _auto_detect_model(self):
+        """Auto-detect if requested model is available, fallback to first available."""
+        try:
+            models = self.list_models()
+            if not models:
+                logger.warning(f"No LM Studio models found. Please load a model in LM Studio.")
+                return
+            
+            # Check if requested model exists
+            available_model_ids = [m['id'] for m in models]
+            
+            if self.model not in available_model_ids:
+                # Model not found, use first available
+                fallback_model = models[0]['id']
+                logger.warning(
+                    f"Requested model '{self.model}' not found in LM Studio. "
+                    f"Auto-switching to '{fallback_model}'. "
+                    f"Available models: {', '.join(available_model_ids)}"
+                )
+                self.model = fallback_model
+            else:
+                logger.info(f"✓ LM Studio model '{self.model}' is available")
+                
+        except Exception as e:
+            logger.warning(f"Could not auto-detect LM Studio models: {e}")
 
 
 class OpenRouterProvider(LLMProvider):
@@ -178,6 +236,10 @@ class OpenRouterProvider(LLMProvider):
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.base_url = "https://openrouter.ai/api"
+        
+        # Auto-detect and validate model if API key is provided
+        if self.api_key:
+            self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Generate using OpenRouter API."""
@@ -263,6 +325,47 @@ class OpenRouterProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Failed to list OpenRouter models: {e}")
             return []
+    
+    def _auto_detect_model(self):
+        """Validate model availability, suggest popular alternatives if not found."""
+        try:
+            models = self.list_models()
+            if not models:
+                logger.warning("Could not fetch OpenRouter models. Using requested model anyway.")
+                return
+            
+            # Check if requested model exists
+            available_model_ids = [m['id'] for m in models]
+            
+            if self.model not in available_model_ids:
+                # Suggest popular alternatives
+                popular_models = [
+                    'openai/gpt-4o',
+                    'openai/gpt-4o-mini',
+                    'anthropic/claude-3.5-sonnet',
+                    'google/gemini-pro',
+                    'meta-llama/llama-3.1-70b-instruct'
+                ]
+                
+                # Find first available popular model
+                fallback = next((m for m in popular_models if m in available_model_ids), None)
+                
+                if fallback:
+                    logger.warning(
+                        f"Requested model '{self.model}' not found in OpenRouter. "
+                        f"Auto-switching to '{fallback}'."
+                    )
+                    self.model = fallback
+                else:
+                    logger.warning(
+                        f"Requested model '{self.model}' not found. "
+                        f"Will attempt to use it anyway. Popular options: {', '.join(popular_models[:3])}"
+                    )
+            else:
+                logger.info(f"✓ OpenRouter model '{self.model}' is available")
+                
+        except Exception as e:
+            logger.warning(f"Could not validate OpenRouter model: {e}")
 
 
 class OpenAIProvider(LLMProvider):
@@ -285,6 +388,9 @@ class OpenAIProvider(LLMProvider):
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.base_url = "https://api.openai.com"
+        
+        # Validate model is in known list
+        self._validate_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Generate using OpenAI API."""
@@ -339,3 +445,18 @@ class OpenAIProvider(LLMProvider):
     def list_models(self) -> List[Dict[str, str]]:
         """List available OpenAI models (static list of popular models)."""
         return self.AVAILABLE_MODELS.copy()
+    
+    def _validate_model(self):
+        """Validate model is in known models list, fallback to gpt-4o-mini if not."""
+        known_model_ids = [m['id'] for m in self.AVAILABLE_MODELS]
+        
+        if self.model not in known_model_ids:
+            fallback = "gpt-4o-mini"
+            logger.warning(
+                f"Model '{self.model}' not in known OpenAI models. "
+                f"Auto-switching to '{fallback}'. "
+                f"Known models: {', '.join(known_model_ids)}"
+            )
+            self.model = fallback
+        else:
+            logger.info(f"✓ Using OpenAI model '{self.model}'")
