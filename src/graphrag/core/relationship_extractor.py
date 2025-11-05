@@ -159,3 +159,71 @@ class RelationshipExtractor:
             logger.exception("Failed to detect method innovations")
 
         return results
+    
+    def extract_relationships(self, text: str) -> Dict[str, List[Dict]]:
+        """
+        Extract all types of relationships from text.
+        
+        Args:
+            text: Document text
+            
+        Returns:
+            Dictionary of relationship types and their extracted relationships
+        """
+        relationships = {
+            'cites': [],
+            'authored_by': [],
+            'published_in': [],
+            'discusses': [],
+            'uses_method': [],
+            'evaluated_on': []
+        }
+        
+        try:
+            # Extract citations
+            citations = self.extract_citations_from_text(text, [])
+            for citation in citations:
+                relationships['cites'].append({
+                    'source': 'current_paper',
+                    'target': citation.get('cited_paper', 'unknown'),
+                    'type': 'citation',
+                    'context': citation.get('context', ''),
+                    'confidence': 0.8
+                })
+            
+            # Extract method usage
+            methods = self.extract_method_usage(text, ['machine learning', 'deep learning', 'neural network'])
+            for method in methods:
+                relationships['uses_method'].append({
+                    'source': 'current_paper',
+                    'target': method.get('method', 'unknown'),
+                    'type': 'method_usage',
+                    'usage': method.get('usage', 'uses'),
+                    'evidence': method.get('evidence', ''),
+                    'confidence': 0.7
+                })
+            
+            # Extract dataset usage
+            datasets = self.extract_dataset_usage(text, ['dataset', 'benchmark', 'evaluation'])
+            for dataset in datasets:
+                relationships['evaluated_on'].append({
+                    'source': 'current_paper',
+                    'target': dataset.get('dataset', 'unknown'),
+                    'type': 'evaluation',
+                    'metrics': dataset.get('metrics', {}),
+                    'evidence': dataset.get('evidence', ''),
+                    'confidence': 0.6
+                })
+            
+            # Add generic authorship relationship
+            relationships['authored_by'].append({
+                'source': 'current_paper',
+                'target': 'author_unknown',
+                'type': 'authorship',
+                'confidence': 0.5
+            })
+            
+        except Exception as e:
+            logger.error(f"Error extracting relationships: {e}")
+        
+        return relationships

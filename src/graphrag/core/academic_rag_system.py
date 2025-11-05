@@ -207,6 +207,22 @@ class AcademicRAGSystem:
             logger.exception("Failed to predict impact for %s", paper_id)
         return out
 
+    @property
+    def impact_metrics(self):
+        """Backward-compatible accessor for impact metrics component.
+
+        Some parts of the codebase reference `self.impact_metrics` while the
+        concrete instance is stored as ``self._impact_metrics``. Provide a
+        property to expose the resolved component and avoid AttributeError.
+        """
+        if not hasattr(self, '_impact_metrics') or self._impact_metrics is None:
+            try:
+                self._impact_metrics = self.container.resolve('impact_metrics')
+            except Exception:
+                # Keep None if not available
+                self._impact_metrics = None
+        return self._impact_metrics
+
     # Advanced GNN-powered analytics components
     @property
     def temporal_analytics(self):
