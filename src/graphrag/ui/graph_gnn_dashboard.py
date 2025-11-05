@@ -279,7 +279,7 @@ class GraphGNNDashboard:
         learning_rate: float = 0.01
     ) -> Dict[str, Any]:
         """
-        Train a GNN model.
+        Train a GNN model with comprehensive validation and error handling.
 
         Args:
             model_type: Type of GNN (gcn, gat, transformer, hetero)
@@ -291,58 +291,122 @@ class GraphGNNDashboard:
             Training results and metrics
         """
         try:
-            # Check if GNN manager is available
+            # STEP 1: Check GNN dependencies
+            from src.graphrag.ml.gnn_utils import (
+                check_gnn_dependencies,
+                validate_graph_for_training,
+                get_user_friendly_error,
+                estimate_training_time
+            )
+
+            deps_ok, deps_msg = check_gnn_dependencies()
+            if not deps_ok:
+                return {
+                    "status": "error",
+                    "message": deps_msg
+                }
+
+            # STEP 2: Check if GNN manager is available or initialize it
             try:
                 if hasattr(self.system, 'gnn_manager'):
                     gnn_mgr = self.system.gnn_manager
                 else:
+                    # Check if Neo4j is available
+                    if not hasattr(self.system.graph, 'uri'):
+                        return {
+                            "status": "error",
+                            "message": """
+❌ GNN requires Neo4j database connection.
+
+Current setup: NetworkX (in-memory graph)
+
+💡 To use GNN features:
+1. Install Neo4j (https://neo4j.com/download/)
+2. Configure connection in Settings tab
+3. Rebuild your knowledge graph with Neo4j
+
+Note: NetworkX fallback support coming soon!
+                            """
+                        }
+
                     # Try to initialize GNN manager
                     from src.graphrag.ml.gnn_manager import GNNManager
-                    gnn_mgr = GNNManager(self.system.graph)
-            except ImportError:
+                    gnn_mgr = GNNManager(
+                        uri=self.system.graph.uri,
+                        user=self.system.graph.user,
+                        password=self.system.graph.password
+                    )
+            except ImportError as e:
+                deps_ok, deps_msg = check_gnn_dependencies()
                 return {
                     "status": "error",
-                    "message": "PyTorch Geometric not installed. Install with: pip install torch torch-geometric"
+                    "message": deps_msg
+                }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": f"❌ Failed to initialize GNN manager: {str(e)}\n\n💡 Check Neo4j connection in Settings."
                 }
 
-            # Prepare training data - convert graph to PyG format
+            # STEP 3: Prepare training data - convert graph to PyG format
             logger.info(f"Converting graph to PyTorch Geometric format...")
 
             try:
                 from src.graphrag.ml.graph_converter import Neo4jToTorchGeometric
+
                 # Pass Neo4j credentials from graph manager
                 converter = Neo4jToTorchGeometric(
                     uri=self.system.graph.uri,
                     user=self.system.graph.user,
                     password=self.system.graph.password
                 )
-                # Use the correct method name
+
+                # Export graph
                 graph_data = converter.export_graph_to_pyg(use_cache=False)
 
                 if graph_data is None or graph_data.num_nodes == 0:
                     converter.close()
                     return {
                         "status": "error",
-                        "message": "No graph data available. Upload documents first."
+                        "message": "❌ No graph data available.\n\n💡 Upload and process documents first."
                     }
-                
+
+                # STEP 4: Validate graph data before training
+                valid, validation_msg = validate_graph_for_training(graph_data)
+                if not valid:
+                    converter.close()
+                    return {
+                        "status": "error",
+                        "message": validation_msg
+                    }
+
                 # Add train/val/test splits for training
                 graph_data = converter.create_train_val_test_split(graph_data)
-                
+
+                # Estimate training time
+                time_estimate = estimate_training_time(
+                    graph_data.num_nodes,
+                    graph_data.num_edges,
+                    epochs,
+                    model_type
+                )
+
                 # Close converter connection
                 converter.close()
 
+                logger.info(f"✓ Graph validation passed. Estimated training time: {time_estimate}")
+
             except Exception as e:
                 logger.error(f"Graph conversion failed: {e}")
-                import traceback
-                traceback.print_exc()
+                error_msg = get_user_friendly_error(e)
                 return {
                     "status": "error",
-                    "message": f"Failed to convert graph: {str(e)}"
+                    "message": error_msg
                 }
 
-            # Train model
+            # STEP 5: Train model with comprehensive error handling
             logger.info(f"Training {model_type} for {task} task ({epochs} epochs)...")
+            logger.info(f"Estimated training time: {time_estimate}")
 
             try:
                 results = gnn_mgr.train(
@@ -353,28 +417,54 @@ class GraphGNNDashboard:
                     lr=learning_rate
                 )
 
+                success_msg = f"""
+✅ {model_type.upper()} model trained successfully!
+
+📊 Training Results:
+- Task: {task}
+- Epochs: {epochs}
+- Nodes: {graph_data.num_nodes}
+- Edges: {graph_data.num_edges}
+- Training Time: {time_estimate}
+
+💡 Next Steps:
+1. Go to "GNN Predictions" tab to test your model
+2. Try different prediction types
+3. Evaluate model performance on your data
+                """
+
                 return {
                     "status": "success",
-                    "message": f"{model_type.upper()} model trained successfully",
+                    "message": success_msg.strip(),
                     "metrics": results
+                }
+
+            except RuntimeError as e:
+                logger.error(f"Training failed with RuntimeError: {e}")
+                error_msg = get_user_friendly_error(e)
+                return {
+                    "status": "error",
+                    "message": error_msg
                 }
 
             except Exception as e:
                 logger.error(f"Training failed: {e}")
                 import traceback
                 traceback.print_exc()
+                error_msg = get_user_friendly_error(e)
                 return {
                     "status": "error",
-                    "message": f"Training failed: {str(e)}"
+                    "message": error_msg
                 }
 
         except Exception as e:
             logger.error(f"Error in train_gnn_model: {e}")
             import traceback
             traceback.print_exc()
+            error_msg = get_user_friendly_error(e)
             return {
                 "status": "error",
-                "message": str(e)
+                "message": error_msg
             }
 
     def get_gnn_predictions(

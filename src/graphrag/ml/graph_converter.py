@@ -10,6 +10,11 @@ from typing import List, Dict, Optional, Tuple
 from neo4j import GraphDatabase
 import pickle
 from pathlib import Path
+import logging
+
+from .gnn_utils import safe_parse_embedding, detect_embedding_dimension
+
+logger = logging.getLogger(__name__)
 
 
 class Neo4jToTorchGeometric:
@@ -18,7 +23,7 @@ class Neo4jToTorchGeometric:
     Supports various node and edge types for academic graphs
     """
 
-    def __init__(self, uri: str, user: str, password: str):
+    def __init__(self, uri: str, user: str, password: str, embedding_dim: Optional[int] = None):
         """
         Initialize converter with Neo4j connection
 
@@ -26,14 +31,50 @@ class Neo4jToTorchGeometric:
             uri: Neo4j connection URI
             user: Neo4j username
             password: Neo4j password
+            embedding_dim: Optional embedding dimension (auto-detected if None)
         """
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.cache_dir = Path("cache/pyg_graphs")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+        # Auto-detect or use provided embedding dimension
+        if embedding_dim is None:
+            self.embedding_dim = self._detect_embedding_dim()
+        else:
+            self.embedding_dim = embedding_dim
+
+        logger.info(f"Graph converter initialized with embedding dimension: {self.embedding_dim}")
+
     def close(self):
         """Close Neo4j connection"""
         self.driver.close()
+
+    def _detect_embedding_dim(self) -> int:
+        """
+        Auto-detect embedding dimension from first node in database.
+
+        Returns:
+            Detected embedding dimension (default: 384)
+        """
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (n)
+                    WHERE n.embedding IS NOT NULL
+                    RETURN n.embedding LIMIT 1
+                """)
+                record = result.single()
+                if record and record['embedding']:
+                    embedding = safe_parse_embedding(record['embedding'], default_dim=384)
+                    dim = len(embedding)
+                    logger.info(f"Auto-detected embedding dimension: {dim}")
+                    return dim
+        except Exception as e:
+            logger.warning(f"Could not detect embedding dimension: {e}")
+
+        # Default fallback
+        logger.info("Using default embedding dimension: 384")
+        return 384
 
     def export_graph_to_pyg(
         self,
@@ -179,17 +220,9 @@ class Neo4jToTorchGeometric:
             for record in result:
                 node_dict = dict(record)
 
-                # Handle embedding
+                # Handle embedding - SECURITY FIX: Use safe_parse_embedding instead of eval()
                 embedding = node_dict.get('embedding')
-                if embedding is None:
-                    # Create random embedding if none exists
-                    embedding = np.random.randn(384).tolist()
-                elif isinstance(embedding, str):
-                    # Parse string representation
-                    try:
-                        embedding = eval(embedding)
-                    except:
-                        embedding = np.random.randn(384).tolist()
+                embedding = safe_parse_embedding(embedding, default_dim=self.embedding_dim)
 
                 node_dict['embedding'] = embedding
                 nodes.append(node_dict)
@@ -262,11 +295,9 @@ class Neo4jToTorchGeometric:
         node_features = []
         for node in nodes_data:
             embedding = node.get('embedding', [])
-            if isinstance(embedding, (list, tuple)):
-                node_features.append(embedding)
-            else:
-                # Fallback to random embedding
-                node_features.append(np.random.randn(384).tolist())
+            # Use safe_parse_embedding for consistent handling
+            embedding = safe_parse_embedding(embedding, default_dim=self.embedding_dim)
+            node_features.append(embedding)
 
         # Convert to tensor
         x = torch.tensor(node_features, dtype=torch.float)
