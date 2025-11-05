@@ -176,7 +176,7 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
     
     # GNNExplainer factory
     def _gnn_explainer_factory():
-        from ..ml.gnn_explainer import GNNExplainer
+        from ..ml.gnn_interpretation import GNNExplainer
         gnn = c.resolve('gnn_manager')
         return GNNExplainer(gnn)
     
