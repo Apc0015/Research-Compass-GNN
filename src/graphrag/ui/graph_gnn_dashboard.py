@@ -744,3 +744,183 @@ Note: NetworkX fallback support coming soon!
             import traceback
             traceback.print_exc()
             return f"Error: {str(e)}\n\n{traceback.format_exc()}"
+
+    def export_gnn_models(
+        self,
+        formats: str = "torchscript,onnx"
+    ) -> Dict[str, Any]:
+        """
+        Export trained GNN models for deployment
+
+        Args:
+            formats: Comma-separated export formats
+
+        Returns:
+            Export result dict
+        """
+        try:
+            # Get GNN manager
+            if hasattr(self.system, 'gnn_manager'):
+                gnn_mgr = self.system.gnn_manager
+            else:
+                return {
+                    "status": "error",
+                    "message": "GNN manager not available. Train a model first."
+                }
+
+            # Parse formats
+            format_list = [f.strip() for f in formats.split(',')]
+
+            # Export models
+            results = gnn_mgr.export_models(
+                output_dir="exports/gnn_models",
+                formats=format_list
+            )
+
+            # Format success message
+            message_lines = ["✅ Models exported successfully!\n"]
+            for model_name, model_results in results.items():
+                message_lines.append(f"\n**{model_name}:**")
+                for fmt, fmt_results in model_results.items():
+                    if fmt_results.get('status') == 'success':
+                        path = fmt_results.get('model_path', '')
+                        size = fmt_results.get('file_size_mb', 0)
+                        message_lines.append(f"  - {fmt.upper()}: {path} ({size:.2f} MB)")
+
+            return {
+                "status": "success",
+                "message": "\n".join(message_lines),
+                "results": results
+            }
+
+        except Exception as e:
+            logger.error(f"Model export failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": f"❌ Export failed: {str(e)}"
+            }
+
+    def generate_gnn_report(self) -> Dict[str, Any]:
+        """
+        Generate performance report with visualizations
+
+        Returns:
+            Report generation result
+        """
+        try:
+            # Get GNN manager
+            if hasattr(self.system, 'gnn_manager'):
+                gnn_mgr = self.system.gnn_manager
+            else:
+                return {
+                    "status": "error",
+                    "message": "GNN manager not available. Train a model first."
+                }
+
+            # Generate reports
+            reports = gnn_mgr.generate_performance_report(
+                output_dir="reports/gnn"
+            )
+
+            # Format success message
+            message_lines = ["✅ Performance reports generated!\n"]
+            for model_name, model_reports in reports.items():
+                message_lines.append(f"\n**{model_name}:**")
+                for report_type, report_path in model_reports.items():
+                    message_lines.append(f"  - {report_type}: {report_path}")
+
+            return {
+                "status": "success",
+                "message": "\n".join(message_lines),
+                "reports": reports
+            }
+
+        except Exception as e:
+            logger.error(f"Report generation failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": f"❌ Report generation failed: {str(e)}"
+            }
+
+    def batch_predict_nodes(
+        self,
+        node_ids: str,
+        top_k: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Batch prediction for multiple nodes
+
+        Args:
+            node_ids: Comma-separated node IDs
+            top_k: Top predictions per node
+
+        Returns:
+            Batch prediction results
+        """
+        try:
+            # Get GNN manager
+            if hasattr(self.system, 'gnn_manager'):
+                gnn_mgr = self.system.gnn_manager
+            else:
+                return {
+                    "status": "error",
+                    "message": "GNN manager not available"
+                }
+
+            # Create batch predictor
+            predictor = gnn_mgr.create_batch_predictor(batch_size=32)
+
+            # Parse node IDs
+            node_id_list = [nid.strip() for nid in node_ids.split(',') if nid.strip()]
+
+            if not node_id_list:
+                return {
+                    "status": "error",
+                    "message": "No valid node IDs provided"
+                }
+
+            # Convert node IDs to indices
+            # This would need to be implemented based on your node ID mapping
+            # For now, assume node IDs are indices
+            try:
+                node_indices = [int(nid) for nid in node_id_list]
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "Node IDs must be numeric indices"
+                }
+
+            # Get graph data
+            if not gnn_mgr.graph_data:
+                return {
+                    "status": "error",
+                    "message": "No graph data available"
+                }
+
+            # Batch predict
+            predictions = predictor.predict_nodes_batch(
+                gnn_mgr.graph_data.x,
+                gnn_mgr.graph_data.edge_index,
+                node_indices,
+                top_k=top_k
+            )
+
+            return {
+                "status": "success",
+                "num_predictions": len(predictions),
+                "predictions": predictions,
+                "cache_stats": predictor.get_cache_stats()
+            }
+
+        except Exception as e:
+            logger.error(f"Batch prediction failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": f"❌ Batch prediction failed: {str(e)}"
+            }

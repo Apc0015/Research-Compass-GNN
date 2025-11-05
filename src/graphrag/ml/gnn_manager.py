@@ -485,6 +485,158 @@ class GNNManager:
 
         return metrics
 
+    def export_models(
+        self,
+        output_dir: str = "exports",
+        formats: List[str] = ['torchscript', 'onnx']
+    ) -> Dict[str, Any]:
+        """
+        Export trained models for deployment
+
+        Args:
+            output_dir: Output directory for exported models
+            formats: Export formats ('torchscript', 'onnx')
+
+        Returns:
+            Dict with export results
+        """
+        from .gnn_export import export_gnn_model
+
+        if not self.graph_data:
+            raise ValueError("No graph data available. Train models first.")
+
+        results = {}
+
+        # Export node classifier
+        if self.node_classifier:
+            logger.info("Exporting node classifier...")
+
+            # Prepare example inputs
+            example_x = self.graph_data.x[:100]  # Sample nodes
+            example_edge_index = self.graph_data.edge_index[:, :200]  # Sample edges
+
+            metadata = {
+                'task': 'node_classification',
+                'num_classes': self.graph_data.y.max().item() + 1 if hasattr(self.graph_data, 'y') else 0,
+                'input_dim': self.graph_data.x.shape[1],
+                'performance': self.get_model_metrics().get('node_classifier', {})
+            }
+
+            results['node_classifier'] = export_gnn_model(
+                self.node_classifier,
+                example_x,
+                example_edge_index,
+                output_dir,
+                'node_classifier',
+                formats=formats,
+                metadata=metadata
+            )
+
+        # Export link predictor
+        if self.link_predictor:
+            logger.info("Exporting link predictor...")
+
+            example_x = self.graph_data.x[:100]
+            example_edge_index = self.graph_data.edge_index[:, :200]
+
+            metadata = {
+                'task': 'link_prediction',
+                'input_dim': self.graph_data.x.shape[1]
+            }
+
+            results['link_predictor'] = export_gnn_model(
+                self.link_predictor,
+                example_x,
+                example_edge_index,
+                output_dir,
+                'link_predictor',
+                formats=formats,
+                metadata=metadata
+            )
+
+        logger.info(f"✓ Models exported to {output_dir}")
+        return results
+
+    def generate_performance_report(
+        self,
+        output_dir: str = "reports"
+    ) -> Dict[str, str]:
+        """
+        Generate comprehensive performance report with visualizations
+
+        Args:
+            output_dir: Output directory for reports
+
+        Returns:
+            Dict with paths to generated report files
+        """
+        from .gnn_visualization import generate_performance_report
+
+        # Load training history
+        history_file = self.model_dir / "training_history.json"
+        if not history_file.exists():
+            raise ValueError("No training history found. Train models first.")
+
+        with open(history_file, 'r') as f:
+            training_history = json.load(f)
+
+        # Get current metrics
+        metrics = self.get_model_metrics()
+
+        all_reports = {}
+
+        # Generate report for each model
+        if 'node_classifier' in training_history:
+            nc_report = generate_performance_report(
+                model_name="node_classifier",
+                task="node_classification",
+                history=training_history['node_classifier'],
+                final_metrics=metrics.get('node_classifier', {}),
+                output_dir=output_dir
+            )
+            all_reports['node_classifier'] = nc_report
+
+        if 'link_predictor' in training_history:
+            lp_report = generate_performance_report(
+                model_name="link_predictor",
+                task="link_prediction",
+                history=training_history['link_predictor'],
+                final_metrics={},
+                output_dir=output_dir
+            )
+            all_reports['link_predictor'] = lp_report
+
+        logger.info(f"✓ Performance reports generated in {output_dir}")
+        return all_reports
+
+    def create_batch_predictor(self, batch_size: int = 32) -> 'BatchInferenceEngine':
+        """
+        Create batch inference engine for efficient predictions
+
+        Args:
+            batch_size: Batch size for predictions
+
+        Returns:
+            BatchInferenceEngine instance
+        """
+        from .gnn_batch_inference import BatchInferenceEngine
+
+        if not self.node_classifier and not self.link_predictor:
+            raise ValueError("No trained models available")
+
+        # Use node classifier by default, or link predictor
+        model = self.node_classifier or self.link_predictor
+
+        predictor = BatchInferenceEngine(
+            model=model,
+            device=self.device,
+            batch_size=batch_size,
+            use_cache=True
+        )
+
+        logger.info("✓ Batch predictor created")
+        return predictor
+
     def _load_node_classifier(self, path: Path) -> PaperClassifier:
         """Load node classifier from file"""
         checkpoint = torch.load(path, map_location=self.device)
