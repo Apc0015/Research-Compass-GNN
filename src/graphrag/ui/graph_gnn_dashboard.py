@@ -13,6 +13,7 @@ This module provides a comprehensive interface for:
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 import json
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -41,50 +42,68 @@ class GraphGNNDashboard:
                 "gnn_status": {}
             }
 
-            # Get basic graph info
-            if hasattr(self.system.graph, 'get_all_nodes'):
-                all_nodes = self.system.graph.get_all_nodes()
-                stats["graph_size"]["total_nodes"] = len(all_nodes)
+            # Get basic graph stats using the correct API
+            if hasattr(self.system.graph, 'get_graph_stats'):
+                graph_stats = self.system.graph.get_graph_stats()
+                stats["graph_size"] = {
+                    "total_nodes": graph_stats.get("node_count", 0),
+                    "total_edges": graph_stats.get("relationship_count", 0)
+                }
 
-                # Count by node type
-                node_counts = {}
-                for node in all_nodes:
-                    node_type = node.get('type', 'Unknown')
-                    node_counts[node_type] = node_counts.get(node_type, 0) + 1
-                stats["node_types"] = node_counts
+            # Query Neo4j or NetworkX for node type counts
+            try:
+                if self.system.graph._use_neo4j:
+                    # Neo4j query for node labels
+                    with self.system.graph.driver.session() as session:
+                        result = session.run("""
+                            CALL db.labels() YIELD label
+                            CALL apoc.cypher.run('MATCH (n:' + label + ') RETURN count(n) as count', {})
+                            YIELD value
+                            RETURN label, value.count as count
+                        """)
+                        node_counts = {record["label"]: record["count"] for record in result}
 
-            # Get edge info
-            if hasattr(self.system.graph, 'get_all_relationships'):
-                all_edges = self.system.graph.get_all_relationships()
-                stats["graph_size"]["total_edges"] = len(all_edges)
+                        # Fallback if APOC not available
+                        if not node_counts:
+                            result = session.run("""
+                                MATCH (n)
+                                RETURN labels(n)[0] as label, count(n) as count
+                                """)
+                            node_counts = {record["label"]: record["count"] for record in result if record["label"]}
 
-                # Count by edge type
-                edge_counts = {}
-                for edge in all_edges:
-                    edge_type = edge.get('type', 'Unknown')
-                    edge_counts[edge_type] = edge_counts.get(edge_type, 0) + 1
-                stats["edge_types"] = edge_counts
+                        stats["node_types"] = node_counts
+                else:
+                    # NetworkX: count by 'type' property
+                    node_counts = {}
+                    for node_id in self.system.graph._graph.nodes():
+                        props = self.system.graph._node_props.get(node_id, {})
+                        node_type = props.get('type', 'Unknown')
+                        node_counts[node_type] = node_counts.get(node_type, 0) + 1
+                    stats["node_types"] = node_counts
+            except Exception as e:
+                logger.warning(f"Could not get node type counts: {e}")
+                stats["node_types"] = {"error": str(e)}
 
-            # Get academic-specific stats
-            if hasattr(self.system, 'academic'):
-                try:
-                    papers = self.system.academic.get_all_papers()
-                    authors = self.system.academic.get_all_authors()
-                    stats["academic"] = {
-                        "papers": len(papers) if papers else 0,
-                        "authors": len(authors) if authors else 0
-                    }
-
-                    # Get year distribution
-                    if papers:
-                        year_dist = {}
-                        for paper in papers:
-                            year = paper.get('year', 'Unknown')
-                            year_dist[str(year)] = year_dist.get(str(year), 0) + 1
-                        stats["year_distribution"] = dict(sorted(year_dist.items()))
-
-                except Exception as e:
-                    logger.warning(f"Could not get academic stats: {e}")
+            # Query for edge type counts
+            try:
+                if self.system.graph._use_neo4j:
+                    with self.system.graph.driver.session() as session:
+                        result = session.run("""
+                            MATCH ()-[r]->()
+                            RETURN type(r) as rel_type, count(r) as count
+                        """)
+                        edge_counts = {record["rel_type"]: record["count"] for record in result}
+                        stats["edge_types"] = edge_counts
+                else:
+                    # NetworkX: count by edge type attribute
+                    edge_counts = {}
+                    for u, v, data in self.system.graph._graph.edges(data=True):
+                        edge_type = data.get('type', 'RELATED')
+                        edge_counts[edge_type] = edge_counts.get(edge_type, 0) + 1
+                    stats["edge_types"] = edge_counts
+            except Exception as e:
+                logger.warning(f"Could not get edge type counts: {e}")
+                stats["edge_types"] = {"error": str(e)}
 
             # Get GNN status
             try:
@@ -92,13 +111,13 @@ class GraphGNNDashboard:
                     gnn_mgr = self.system.gnn_manager
                     stats["gnn_status"] = {
                         "available": True,
-                        "models_trained": len(gnn_mgr.models) if hasattr(gnn_mgr, 'models') else 0,
+                        "models_trained": len(getattr(gnn_mgr, 'models', {})),
                         "device": str(getattr(gnn_mgr, 'device', 'cpu'))
                     }
                 else:
                     stats["gnn_status"] = {
                         "available": False,
-                        "message": "GNN manager not initialized"
+                        "message": "GNN manager not initialized. Install PyTorch Geometric."
                     }
             except Exception as e:
                 stats["gnn_status"] = {
@@ -110,6 +129,8 @@ class GraphGNNDashboard:
 
         except Exception as e:
             logger.error(f"Error getting graph statistics: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "status": "error",
                 "message": str(e)
@@ -127,58 +148,107 @@ class GraphGNNDashboard:
             HTML string for visualization
         """
         try:
-            from src.graphrag.visualization.enhanced_viz import EnhancedGraphVisualizer
+            from pyvis.network import Network
 
-            # Get all nodes (limited)
-            all_nodes = self.system.graph.get_all_nodes()
-            if len(all_nodes) > max_nodes:
-                all_nodes = all_nodes[:max_nodes]
-                logger.info(f"Limiting visualization to {max_nodes} nodes")
+            # Create network
+            net = Network(height="750px", width="100%", directed=True)
+            net.barnes_hut()
 
-            # Get all edges
-            all_edges = self.system.graph.get_all_relationships()
+            nodes_data = []
+            edges_data = []
 
-            # Filter edges to only include nodes in our sample
-            node_ids = {node.get('id') for node in all_nodes}
-            filtered_edges = [
-                edge for edge in all_edges
-                if edge.get('source') in node_ids and edge.get('target') in node_ids
-            ]
+            # Query nodes from graph
+            if self.system.graph._use_neo4j:
+                with self.system.graph.driver.session() as session:
+                    # Get nodes
+                    result = session.run(f"""
+                        MATCH (n)
+                        RETURN id(n) as id, labels(n) as labels, properties(n) as props
+                        LIMIT {max_nodes}
+                    """)
+                    for record in result:
+                        node_id = str(record["id"])
+                        labels = record["labels"]
+                        props = record["props"]
+                        nodes_data.append({
+                            'id': node_id,
+                            'label': props.get('name', props.get('title', node_id[:20])),
+                            'type': labels[0] if labels else 'Unknown',
+                            'props': props
+                        })
 
-            # Create visualization
-            visualizer = EnhancedGraphVisualizer()
+                    # Get edges between these nodes
+                    result = session.run(f"""
+                        MATCH (n)-[r]->(m)
+                        WHERE id(n) IN [node.id for node in $nodes]
+                        AND id(m) IN [node.id for node in $nodes]
+                        RETURN id(n) as source, id(m) as target, type(r) as rel_type
+                        LIMIT {max_nodes * 2}
+                    """, nodes=[{'id': int(n['id'])} for n in nodes_data])
+                    for record in result:
+                        edges_data.append({
+                            'source': str(record["source"]),
+                            'target': str(record["target"]),
+                            'type': record["rel_type"]
+                        })
+            else:
+                # NetworkX fallback
+                count = 0
+                for node_id in self.system.graph._graph.nodes():
+                    if count >= max_nodes:
+                        break
+                    props = self.system.graph._node_props.get(node_id, {})
+                    nodes_data.append({
+                        'id': str(node_id),
+                        'label': props.get('name', props.get('text', str(node_id)[:20])),
+                        'type': props.get('type', 'Unknown'),
+                        'props': props
+                    })
+                    count += 1
 
-            # Add nodes
-            for node in all_nodes:
-                node_type = node.get('type', 'Unknown')
-                label = node.get('name', node.get('title', node.get('id', 'Unknown')))
-                visualizer.add_node(
+                # Get edges
+                node_ids_set = {n['id'] for n in nodes_data}
+                for u, v, data in self.system.graph._graph.edges(data=True):
+                    if str(u) in node_ids_set and str(v) in node_ids_set:
+                        edges_data.append({
+                            'source': str(u),
+                            'target': str(v),
+                            'type': data.get('type', 'RELATED')
+                        })
+
+            # Add nodes to visualization
+            color_map = {
+                'Paper': '#3498db',
+                'Author': '#2ecc71',
+                'Topic': '#f39c12',
+                'Venue': '#9b59b6',
+                'Entity': '#e74c3c',
+                'Unknown': '#95a5a6'
+            }
+
+            for node in nodes_data:
+                color = color_map.get(node['type'], '#95a5a6')
+                net.add_node(
                     node['id'],
-                    label=label,
-                    node_type=node_type,
-                    properties=node
+                    label=node['label'],
+                    color=color,
+                    title=f"{node['type']}: {node['label']}"
                 )
 
             # Add edges
-            for edge in filtered_edges:
-                visualizer.add_edge(
-                    edge['source'],
-                    edge['target'],
-                    relationship_type=edge.get('type', 'RELATED'),
-                    properties=edge
-                )
+            for edge in edges_data:
+                net.add_edge(edge['source'], edge['target'], title=edge['type'])
 
             # Generate HTML
-            html = visualizer.generate_html(
-                title=f"Knowledge Graph ({len(all_nodes)} nodes, {len(filtered_edges)} edges)",
-                physics_enabled=True
-            )
+            html = net.generate_html()
 
             return html
 
         except Exception as e:
             logger.error(f"Error visualizing graph: {e}")
-            return f"<html><body><h2>Error</h2><p>{str(e)}</p></body></html>"
+            import traceback
+            traceback.print_exc()
+            return f"<html><body><h2>Error</h2><p>{str(e)}</p><pre>{traceback.format_exc()}</pre></body></html>"
 
     def get_node_details(self, node_id: str) -> Dict[str, Any]:
         """Get detailed information about a specific node."""
@@ -221,44 +291,72 @@ class GraphGNNDashboard:
             Training results and metrics
         """
         try:
-            if not hasattr(self.system, 'gnn_manager') or not self.system.gnn_manager:
+            # Check if GNN manager is available
+            try:
+                if hasattr(self.system, 'gnn_manager'):
+                    gnn_mgr = self.system.gnn_manager
+                else:
+                    # Try to initialize GNN manager
+                    from src.graphrag.ml.gnn_manager import GNNManager
+                    gnn_mgr = GNNManager(self.system.graph)
+            except ImportError:
                 return {
                     "status": "error",
-                    "message": "GNN manager not available. Install PyTorch Geometric."
+                    "message": "PyTorch Geometric not installed. Install with: pip install torch torch-geometric"
                 }
 
-            gnn_mgr = self.system.gnn_manager
+            # Prepare training data - convert graph to PyG format
+            logger.info(f"Converting graph to PyTorch Geometric format...")
 
-            # Prepare training data
-            logger.info(f"Preparing data for {model_type} model, task: {task}")
+            try:
+                from src.graphrag.ml.graph_converter import Neo4jToTorchGeometric
+                converter = Neo4jToTorchGeometric(self.system.graph)
+                graph_data = converter.convert()
 
-            # Convert graph to PyTorch Geometric format
-            if hasattr(self.system, 'gnn_data_pipeline'):
-                graph_data = self.system.gnn_data_pipeline.build_pyg_graph()
-            else:
+                if graph_data is None:
+                    return {
+                        "status": "error",
+                        "message": "No graph data available. Upload documents first."
+                    }
+
+            except Exception as e:
+                logger.error(f"Graph conversion failed: {e}")
                 return {
                     "status": "error",
-                    "message": "GNN data pipeline not available"
+                    "message": f"Failed to convert graph: {str(e)}"
                 }
 
             # Train model
-            logger.info(f"Training {model_type} for {epochs} epochs...")
-            results = gnn_mgr.train_model(
-                model_type=model_type,
-                task=task,
-                data=graph_data,
-                epochs=epochs,
-                lr=learning_rate
-            )
+            logger.info(f"Training {model_type} for {task} task ({epochs} epochs)...")
 
-            return {
-                "status": "success",
-                "message": f"Model trained successfully",
-                "metrics": results
-            }
+            try:
+                results = gnn_mgr.train(
+                    data=graph_data,
+                    model_type=model_type,
+                    task=task,
+                    epochs=epochs,
+                    lr=learning_rate
+                )
+
+                return {
+                    "status": "success",
+                    "message": f"{model_type.upper()} model trained successfully",
+                    "metrics": results
+                }
+
+            except Exception as e:
+                logger.error(f"Training failed: {e}")
+                import traceback
+                traceback.print_exc()
+                return {
+                    "status": "error",
+                    "message": f"Training failed: {str(e)}"
+                }
 
         except Exception as e:
-            logger.error(f"Error training GNN model: {e}")
+            logger.error(f"Error in train_gnn_model: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "status": "error",
                 "message": str(e)
@@ -282,46 +380,112 @@ class GraphGNNDashboard:
             Predictions with scores
         """
         try:
-            if not hasattr(self.system, 'gnn_manager') or not self.system.gnn_manager:
+            # Validate inputs
+            if not node_id or not node_id.strip():
                 return {
                     "status": "error",
-                    "message": "GNN manager not available"
+                    "message": "Please provide a node ID (paper title or ID)"
                 }
 
-            gnn_mgr = self.system.gnn_manager
-
-            if prediction_type == "link_prediction" and node_id:
-                # Predict likely connections for this node
-                predictions = gnn_mgr.predict_links(node_id, top_k=top_k)
-                return {
-                    "status": "success",
-                    "predictions": predictions
-                }
-
-            elif prediction_type == "node_classification" and node_id:
-                # Classify node type/category
-                predictions = gnn_mgr.classify_node(node_id)
-                return {
-                    "status": "success",
-                    "predictions": predictions
-                }
-
-            elif prediction_type == "similar_nodes" and node_id:
-                # Find similar nodes using GNN embeddings
-                predictions = gnn_mgr.find_similar_nodes(node_id, top_k=top_k)
-                return {
-                    "status": "success",
-                    "predictions": predictions
-                }
-
-            else:
+            # Check if GNN manager is available
+            try:
+                if hasattr(self.system, 'gnn_manager'):
+                    gnn_mgr = self.system.gnn_manager
+                else:
+                    from src.graphrag.ml.gnn_manager import GNNManager
+                    gnn_mgr = GNNManager(self.system.graph)
+            except ImportError:
                 return {
                     "status": "error",
-                    "message": f"Invalid prediction type or missing node_id"
+                    "message": "PyTorch Geometric not installed. Install with: pip install torch torch-geometric"
+                }
+
+            # Make sure model is trained
+            if not hasattr(gnn_mgr, 'models') or not gnn_mgr.models:
+                return {
+                    "status": "error",
+                    "message": "No trained GNN models available. Train a model first in the 'Train GNN Models' tab."
+                }
+
+            logger.info(f"Getting {prediction_type} predictions for node: {node_id}")
+
+            try:
+                if prediction_type == "link_prediction":
+                    # Predict likely connections
+                    try:
+                        predictions = gnn_mgr.predict_links(node_id, top_k=top_k)
+                        return {
+                            "status": "success",
+                            "prediction_type": "link_prediction",
+                            "node_id": node_id,
+                            "predictions": predictions
+                        }
+                    except AttributeError:
+                        # Fallback: use link predictor if available
+                        if hasattr(self.system, 'link_predictor'):
+                            predictions = self.system.link_predictor.predict(node_id, top_k=top_k)
+                            return {
+                                "status": "success",
+                                "predictions": predictions
+                            }
+                        else:
+                            return {
+                                "status": "error",
+                                "message": "Link prediction model not available. Train a link_prediction model first."
+                            }
+
+                elif prediction_type == "node_classification":
+                    # Classify node
+                    try:
+                        predictions = gnn_mgr.classify_node(node_id)
+                        return {
+                            "status": "success",
+                            "prediction_type": "node_classification",
+                            "node_id": node_id,
+                            "predictions": predictions
+                        }
+                    except AttributeError:
+                        return {
+                            "status": "error",
+                            "message": "Node classification model not available. Train a node_classification model first."
+                        }
+
+                elif prediction_type == "similar_nodes":
+                    # Find similar nodes
+                    try:
+                        predictions = gnn_mgr.find_similar_nodes(node_id, top_k=top_k)
+                        return {
+                            "status": "success",
+                            "prediction_type": "similar_nodes",
+                            "node_id": node_id,
+                            "predictions": predictions
+                        }
+                    except AttributeError:
+                        # Fallback: use graph-based similarity
+                        return {
+                            "status": "error",
+                            "message": "Similarity model not available. Train an embedding model first."
+                        }
+
+                else:
+                    return {
+                        "status": "error",
+                        "message": f"Unknown prediction type: {prediction_type}. Use: link_prediction, node_classification, or similar_nodes"
+                    }
+
+            except Exception as e:
+                logger.error(f"Prediction failed: {e}")
+                import traceback
+                traceback.print_exc()
+                return {
+                    "status": "error",
+                    "message": f"Prediction failed: {str(e)}"
                 }
 
         except Exception as e:
-            logger.error(f"Error getting GNN predictions: {e}")
+            logger.error(f"Error in get_gnn_predictions: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "status": "error",
                 "message": str(e)
@@ -362,40 +526,100 @@ class GraphGNNDashboard:
         Export graph data.
 
         Args:
-            format: Export format (json, csv, graphml)
+            format: Export format (json, csv)
 
         Returns:
             Exported data as string
         """
         try:
-            all_nodes = self.system.graph.get_all_nodes()
-            all_edges = self.system.graph.get_all_relationships()
+            nodes_data = []
+            edges_data = []
+
+            # Query nodes and edges
+            if self.system.graph._use_neo4j:
+                with self.system.graph.driver.session() as session:
+                    # Get nodes
+                    result = session.run("""
+                        MATCH (n)
+                        RETURN id(n) as id, labels(n) as labels, properties(n) as props
+                        LIMIT 10000
+                    """)
+                    for record in result:
+                        nodes_data.append({
+                            'id': str(record["id"]),
+                            'labels': record["labels"],
+                            'properties': dict(record["props"])
+                        })
+
+                    # Get edges
+                    result = session.run("""
+                        MATCH (n)-[r]->(m)
+                        RETURN id(n) as source, id(m) as target,
+                               type(r) as rel_type, properties(r) as props
+                        LIMIT 10000
+                    """)
+                    for record in result:
+                        edges_data.append({
+                            'source': str(record["source"]),
+                            'target': str(record["target"]),
+                            'type': record["rel_type"],
+                            'properties': dict(record["props"])
+                        })
+            else:
+                # NetworkX fallback
+                for node_id in self.system.graph._graph.nodes():
+                    props = self.system.graph._node_props.get(node_id, {})
+                    nodes_data.append({
+                        'id': str(node_id),
+                        'properties': props
+                    })
+
+                for u, v, data in self.system.graph._graph.edges(data=True):
+                    edges_data.append({
+                        'source': str(u),
+                        'target': str(v),
+                        'type': data.get('type', 'RELATED'),
+                        'properties': data
+                    })
 
             if format == "json":
                 data = {
-                    "nodes": all_nodes,
-                    "edges": all_edges,
+                    "nodes": nodes_data,
+                    "edges": edges_data,
                     "metadata": {
-                        "node_count": len(all_nodes),
-                        "edge_count": len(all_edges)
+                        "node_count": len(nodes_data),
+                        "edge_count": len(edges_data),
+                        "exported_at": json.dumps(datetime.now().isoformat())
                     }
                 }
-                return json.dumps(data, indent=2)
+                return json.dumps(data, indent=2, default=str)
 
             elif format == "csv":
-                # Simple CSV export
-                csv_data = "type,id,properties\n"
-                for node in all_nodes:
-                    props = json.dumps(node).replace(',', ';')
-                    csv_data += f"node,{node['id']},{props}\n"
-                for edge in all_edges:
-                    props = json.dumps(edge).replace(',', ';')
-                    csv_data += f"edge,{edge['source']}->{edge['target']},{props}\n"
-                return csv_data
+                # CSV export
+                csv_lines = []
+                csv_lines.append("type,id,label,properties")
+
+                for node in nodes_data:
+                    node_id = node['id']
+                    label = node.get('labels', ['Unknown'])[0] if 'labels' in node else node.get('properties', {}).get('type', 'Unknown')
+                    props = json.dumps(node.get('properties', {})).replace('"', '""')
+                    csv_lines.append(f'node,{node_id},{label},"{props}"')
+
+                csv_lines.append("\ntype,source,target,rel_type,properties")
+                for edge in edges_data:
+                    source = edge['source']
+                    target = edge['target']
+                    rel_type = edge.get('type', 'RELATED')
+                    props = json.dumps(edge.get('properties', {})).replace('"', '""')
+                    csv_lines.append(f'edge,{source},{target},{rel_type},"{props}"')
+
+                return "\n".join(csv_lines)
 
             else:
-                return f"Format {format} not supported yet"
+                return f"Format '{format}' not supported. Use 'json' or 'csv'."
 
         except Exception as e:
             logger.error(f"Error exporting graph: {e}")
-            return f"Error: {str(e)}"
+            import traceback
+            traceback.print_exc()
+            return f"Error: {str(e)}\n\n{traceback.format_exc()}"
