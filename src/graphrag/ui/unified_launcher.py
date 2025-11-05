@@ -246,19 +246,83 @@ def create_unified_ui(system=None):
             with gr.TabItem("📤 Upload & Process"):
                 gr.Markdown("### Upload Documents or Add Web Links")
                 gr.Markdown("""
-                **Instructions:**
-                1. Upload PDF, DOCX, TXT, or MD files using the file uploader
-                2. OR paste web URLs (one per line) - supports arXiv, research papers, etc.
-                3. Check "Extract metadata" to get authors, titles, citations
-                4. Check "Build knowledge graph" to create nodes and relationships
-                5. Click "Process All" to start processing
-                
-                **Examples:**
-                - arXiv URL: `https://arxiv.org/abs/1706.03762` (Attention Is All You Need)
-                - arXiv URL: `https://arxiv.org/abs/1810.04805` (BERT paper)
-                - Direct PDF: `https://example.com/research-paper.pdf`
-                
-                **Note:** Processing may take 30-60 seconds per document depending on size.
+                **🎯 Purpose:**
+                This feature allows you to upload research papers and build a knowledge graph from them. The system extracts entities (papers, authors, concepts), relationships (citations, authorship), and metadata automatically.
+
+                **📋 Step-by-Step Instructions:**
+                1. **Upload Files** (Optional):
+                   - Click the file upload box below
+                   - Select one or multiple files (PDF, DOCX, TXT, or MD formats)
+                   - You can drag and drop files directly into the box
+
+                2. **OR Add Web URLs** (Optional):
+                   - Paste URLs in the text box (one URL per line)
+                   - Supported sources: arXiv papers, direct PDF links, research repositories
+
+                3. **Configure Options**:
+                   - ✅ **Extract metadata**: Automatically extracts titles, authors, publication dates, citations
+                   - ✅ **Build knowledge graph**: Creates nodes and relationships in Neo4j/in-memory graph
+
+                4. **Process**:
+                   - Click "🚀 Process All" button
+                   - Watch the status panel for progress updates
+                   - Review results in the "Detailed Results" JSON output
+
+                **💡 Example Use Cases:**
+
+                *Example 1: Upload arXiv Papers*
+                ```
+                URLs:
+                https://arxiv.org/abs/1706.03762
+                https://arxiv.org/abs/1810.04805
+                https://arxiv.org/abs/2010.11929
+
+                Options: ✓ Extract metadata, ✓ Build knowledge graph
+                Result: Creates paper nodes with citations and author relationships
+                ```
+
+                *Example 2: Upload Local PDFs*
+                ```
+                Files: research_paper_1.pdf, thesis_chapter_2.pdf
+                Options: ✓ Extract metadata, ✓ Build knowledge graph
+                Result: Extracts text, builds graph, enables querying
+                ```
+
+                *Example 3: Mixed Upload (Files + URLs)*
+                ```
+                Files: local_paper.pdf
+                URLs: https://arxiv.org/abs/1706.03762
+                Options: ✓ Extract metadata, ✓ Build knowledge graph
+                Result: Processes both and connects related papers
+                ```
+
+                **⚙️ Configuration Details:**
+                - **Extract metadata ON**: Extracts title, authors, year, abstract, citations, keywords
+                - **Extract metadata OFF**: Only processes raw text content
+                - **Build knowledge graph ON**: Creates nodes (papers, authors, concepts) and edges (citations, authorship, similarity)
+                - **Build knowledge graph OFF**: Only stores text for search, no graph relationships
+
+                **⏱️ Processing Time:**
+                - Small papers (5-10 pages): ~30 seconds
+                - Large papers (20+ pages): ~60-90 seconds
+                - Batch of 10 papers: ~5-10 minutes
+
+                **✅ Success Indicators:**
+                - Status shows "✅ Processed X/Y files successfully"
+                - Detailed Results JSON shows "status": "success" for each file
+                - No errors in the status panel
+
+                **🔧 Troubleshooting:**
+                - **Error: "Document processor not available"**: System not initialized properly, restart launcher
+                - **Error: "Could not extract text from PDF"**: File may be scanned image, try OCR first
+                - **Slow processing**: Large files or many citations take longer, this is normal
+                - **URL download fails**: Check internet connection or try direct PDF link
+
+                **📝 Tips:**
+                - Upload related papers together to build connected knowledge graphs
+                - Use arXiv URLs when possible (better metadata extraction)
+                - Process papers in batches of 5-10 for optimal performance
+                - Wait for processing to complete before querying
                 """)
 
                 with gr.Row():
@@ -379,11 +443,62 @@ def create_unified_ui(system=None):
             # ========== TAB 2: Graph & GNN Dashboard ==========
             with gr.TabItem("🕸️ Graph & GNN Dashboard"):
                 gr.Markdown("### Knowledge Graph Visualization & GNN Model Management")
+                gr.Markdown("""
+                **🎯 Purpose:**
+                This dashboard provides complete control over your knowledge graph and Graph Neural Network (GNN) models. View statistics, visualize connections, train AI models, and make intelligent predictions about research relationships.
+
+                **💡 Overview:**
+                - **Graph Statistics**: View node/edge counts, types, and academic metrics
+                - **Visualize Graph**: Interactive network visualization with multiple layouts
+                - **Train GNN Models**: Train AI models for link prediction, node classification, and embeddings
+                - **GNN Predictions**: Use trained models to predict citations, classify papers, find similar research
+                - **Export Graph**: Download your knowledge graph for external analysis
+                """)
 
                 with gr.Tabs():
                     # Sub-tab: Graph Statistics
                     with gr.Tab("📊 Graph Statistics"):
-                        gr.Markdown("View comprehensive statistics about your knowledge graph")
+                        gr.Markdown("""
+                        **🎯 Purpose:**
+                        Get comprehensive statistics about your knowledge graph including size, node types, edge types, and academic-specific metrics.
+
+                        **📋 Instructions:**
+                        1. Click "🔄 Refresh Statistics" button
+                        2. View the following metrics:
+                           - **Graph Size**: Total nodes and edges
+                           - **Node Types**: Breakdown by paper, author, concept, institution
+                           - **Edge Types**: Citation counts, authorship links, co-authorship, concept relationships
+                           - **GNN Status**: Whether models are trained and ready
+                           - **Academic Statistics**: Papers by year, top authors, citation counts
+
+                        **💡 Example Output:**
+                        ```json
+                        Graph Size:
+                        {
+                          "total_nodes": 150,
+                          "total_edges": 420
+                        }
+
+                        Node Types:
+                        {
+                          "Paper": 100,
+                          "Author": 35,
+                          "Concept": 15
+                        }
+
+                        Edge Types:
+                        {
+                          "CITES": 200,
+                          "AUTHORED_BY": 100,
+                          "MENTIONS": 120
+                        }
+                        ```
+
+                        **📝 Tips:**
+                        - Refresh after uploading new papers to see updated stats
+                        - Use these metrics to decide on GNN model training parameters
+                        - Large graphs (>1000 nodes) benefit more from GNN analysis
+                        """)
 
                         stats_refresh_btn = gr.Button("🔄 Refresh Statistics", variant="primary")
 

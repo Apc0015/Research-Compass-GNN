@@ -47,17 +47,20 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
 
     The factories use lazy imports to avoid heavy imports at module import time.
     """
+    import os
+    
     cfg = config or {}
     c = Container()
 
     # Register config
     c.register_singleton('config', cfg)
     
-    # Neo4j connection details
+    # Neo4j connection details - read from environment variables OR config
+    # This allows both local and cloud Neo4j to work based on .env configuration
     neo = cfg.get('neo4j', {})
-    neo4j_uri = neo.get('uri', cfg.get('NEO4J_URI', 'bolt://127.0.0.1:7687'))
-    neo4j_user = neo.get('user', cfg.get('NEO4J_USER', 'neo4j'))
-    neo4j_password = neo.get('password', cfg.get('NEO4J_PASSWORD', 'password'))
+    neo4j_uri = neo.get('uri', cfg.get('NEO4J_URI', os.getenv('NEO4J_URI', 'neo4j://127.0.0.1:7687')))
+    neo4j_user = neo.get('user', cfg.get('NEO4J_USER', os.getenv('NEO4J_USER', 'neo4j')))
+    neo4j_password = neo.get('password', cfg.get('NEO4J_PASSWORD', os.getenv('NEO4J_PASSWORD', 'password')))
 
     # GraphManager factory
     def _graph_factory():
