@@ -1,104 +1,205 @@
-# Research Compass# 🧭 Research Compass
+# Research Compass# Research Compass# 🧭 Research Compass
 
 
 
-**Advanced AI-powered research exploration platform with Graph Neural Networks**> **Advanced AI-powered research exploration platform with Graph Neural Networks**
+Advanced AI-powered research exploration platform with Graph Neural Networks
 
 
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()
+## Overview**Advanced AI-powered research exploration platform with Graph Neural Networks**> **Advanced AI-powered research exploration platform with Graph Neural Networks**
 
 
 
-Research Compass is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.**Research Compass** is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.
+Research Compass combines knowledge graphs, vector embeddings, and Graph Neural Networks to provide intelligent paper recommendations, citation analysis, and research insights.
 
 
 
-## Quick Start## 🚀 Quick Start
+## Prerequisites[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 
 
-### Prerequisites```bash
+- Python 3.11+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- Python 3.11+ (recommended: conda environment)# 1. Clone and setup
+- Neo4j Aura account or Neo4j Desktop
 
-- Neo4j Aura account (free tier available) or Neo4j Desktopgit clone <repository-url>
-
-- LLM provider (Ollama, OpenRouter, OpenAI, or LM Studio)cd "Research Compass"
-
-python -m venv .venv
-
-### Installationsource .venv/bin/activate  # Windows: .venv\Scripts\activate
+- LLM provider (Ollama, OpenRouter, OpenAI, or LM Studio)[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()
 
 
 
-```bash# 2. Install dependencies
+## Installation
 
-# Clone repositorypip install -r requirements.txt
 
-git clone <repository-url>python -m spacy download en_core_web_sm
+
+```bashResearch Compass is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.**Research Compass** is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.
+
+# Clone repository
+
+git clone https://github.com/Apc0015/Research-Compass.git
 
 cd "Research Compass"
 
-# 3. Setup LLM (Ollama recommended)
+## Quick Start## 🚀 Quick Start
 
-# Create conda environment (recommended)curl -fsSL https://ollama.ai/install.sh | sh
+# Create conda environment
 
-conda create -n research_compass python=3.11 -yollama pull llama3.2
+conda create -n research_compass python=3.11 -y
 
-conda activate research_compassollama serve
+conda activate research_compass
 
+### Prerequisites```bash
 
+# Install dependencies
 
-# Install dependencies# 4. Configure
+pip install -r requirements.txt- Python 3.11+ (recommended: conda environment)# 1. Clone and setup
 
-pip install -r requirements.txtcp .env.example .env
+python -m spacy download en_core_web_sm
 
-python -m spacy download en_core_web_sm# Edit .env with your settings
+- Neo4j Aura account (free tier available) or Neo4j Desktopgit clone <repository-url>
 
+# Configure environment
 
+cp .env.example .env- LLM provider (Ollama, OpenRouter, OpenAI, or LM Studio)cd "Research Compass"
 
-# Configure environment# 5. Launch
+# Edit .env with your credentials
 
-cp .env.example .envpython launcher.py
+python -m venv .venv
 
-# Edit .env with your settings```
+# Launch application
 
+python launcher.py### Installationsource .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-
-# Launch applicationAccess at **http://localhost:7860**
-
-python launcher.py
-
-```## ⚙️ Configuration
-
-
-
-Access at: http://localhost:7860Create `.env` file in project root:
+```
 
 
 
-## Configuration```bash
+## Configuration
 
-# LLM Configuration
+```bash# 2. Install dependencies
 
-Create `.env` file in project root:LLM_PROVIDER=ollama
+Edit `.env` file:
 
-LLM_MODEL=llama3.2
+# Clone repositorypip install -r requirements.txt
 
-```bashLLM_TEMPERATURE=0.3
+```bash
 
-# Neo4j ConfigurationLLM_MAX_TOKENS=1000
+# Neo4j Cloud Configurationgit clone <repository-url>python -m spacy download en_core_web_sm
 
 NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
 
-NEO4J_USERNAME=neo4j# Local LLM URLs
+NEO4J_USERNAME=neo4jcd "Research Compass"
 
-NEO4J_PASSWORD=your_passwordOLLAMA_BASE_URL=http://localhost:11434
+NEO4J_PASSWORD=your_password
+
+# 3. Setup LLM (Ollama recommended)
+
+# LLM Configuration
+
+LLM_PROVIDER=openrouter# Create conda environment (recommended)curl -fsSL https://ollama.ai/install.sh | sh
+
+LLM_MODEL=your_model
+
+OPENROUTER_API_KEY=your_keyconda create -n research_compass python=3.11 -yollama pull llama3.2
+
+
+
+# Application Settingsconda activate research_compassollama serve
+
+GRADIO_PORT=7860
+
+```
+
+
+
+## Key Features# Install dependencies# 4. Configure
+
+
+
+- Interactive graph visualizationpip install -r requirements.txtcp .env.example .env
+
+- GNN model training and predictions
+
+- Document processing (PDF, DOCX, TXT, Markdown)python -m spacy download en_core_web_sm# Edit .env with your settings
+
+- Citation network analysis
+
+- Research assistant with natural language queries
+
+- Temporal analysis and trend detection
+
+# Configure environment# 5. Launch
+
+## Technology Stack
+
+cp .env.example .envpython launcher.py
+
+- Python 3.11+
+
+- Neo4j / NetworkX# Edit .env with your settings```
+
+- PyTorch Geometric
+
+- Gradio
+
+- FAISS
+
+- spaCy# Launch applicationAccess at **http://localhost:7860**
+
+
+
+## Usagepython launcher.py
+
+
+
+```bash```## ⚙️ Configuration
+
+# Activate environment
+
+conda activate research_compass
+
+
+
+# Start applicationAccess at: http://localhost:7860Create `.env` file in project root:
+
+python launcher.py
+
+```
+
+
+
+Access at http://localhost:7860## Configuration```bash
+
+
+
+## Troubleshooting# LLM Configuration
+
+
+
+**Graph Visualization Empty**: Upload documents first with "Build Knowledge Graph" enabledCreate `.env` file in project root:LLM_PROVIDER=ollama
+
+
+
+**Neo4j Connection Failed**: Verify URI format and credentials in .env fileLLM_MODEL=llama3.2
+
+
+
+**Python Version**: Use Python 3.11 (NOT 3.13)```bashLLM_TEMPERATURE=0.3
+
+
+
+## License# Neo4j ConfigurationLLM_MAX_TOKENS=1000
+
+
+
+MIT LicenseNEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+
+
+
+## AcknowledgmentsNEO4J_USERNAME=neo4j# Local LLM URLs
+
+
+
+Built with Neo4j, PyTorch Geometric, spaCy, and GradioNEO4J_PASSWORD=your_passwordOLLAMA_BASE_URL=http://localhost:11434
+
 
 LMSTUDIO_BASE_URL=http://localhost:1234
 
@@ -166,7 +267,11 @@ CACHE_DIR=data/cache
 
 | GNN Framework | PyTorch Geometric |### 🧠 **GNN-Powered Core**
 
-| Visualization | Pyvis, Plotly, NetworkX |- **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
+| Visualization | Pyvis, Plotly, NetworkX |
+
+---
+
+## Project Structure- **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
 
 - **Temporal Analysis**: Research evolution tracking and trend prediction
 
@@ -200,7 +305,14 @@ Research Compass/### 📚 **Document Processing**
 
 ├── models/             # Trained models
 
-└── tests/              # Unit tests### 🤖 **User Experience**
+└── tests/              # Unit tests
+```
+
+---
+
+## Usage
+
+### Starting the Application### 🤖 **User Experience**
 
 ```- **Streaming Responses**: Real-time word-by-word answer display
 
@@ -228,7 +340,15 @@ python launcher.py --port 8080| **Graph Database** | Neo4j 5.0+ / NetworkX |
 
 # Public sharing| **NLP/NER** | spaCy 3.7+ |
 
-python launcher.py --share| **Embeddings** | Sentence Transformers |
+# Public sharing
+python launcher.py --share
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues and Solutions| **Embeddings** | Sentence Transformers |
 
 ```| **Web UI** | Gradio 4.0+ |
 

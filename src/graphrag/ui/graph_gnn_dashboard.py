@@ -310,7 +310,12 @@ class GraphGNNDashboard:
 
             try:
                 from src.graphrag.ml.graph_converter import Neo4jToTorchGeometric
-                converter = Neo4jToTorchGeometric(self.system.graph)
+                # Pass Neo4j credentials from graph manager
+                converter = Neo4jToTorchGeometric(
+                    uri=self.system.graph.uri,
+                    user=self.system.graph.user,
+                    password=self.system.graph.password
+                )
                 graph_data = converter.convert()
 
                 if graph_data is None:
