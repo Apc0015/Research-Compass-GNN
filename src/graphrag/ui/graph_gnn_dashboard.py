@@ -316,16 +316,26 @@ class GraphGNNDashboard:
                     user=self.system.graph.user,
                     password=self.system.graph.password
                 )
-                graph_data = converter.convert()
+                # Use the correct method name
+                graph_data = converter.export_graph_to_pyg(use_cache=False)
 
-                if graph_data is None:
+                if graph_data is None or graph_data.num_nodes == 0:
+                    converter.close()
                     return {
                         "status": "error",
                         "message": "No graph data available. Upload documents first."
                     }
+                
+                # Add train/val/test splits for training
+                graph_data = converter.create_train_val_test_split(graph_data)
+                
+                # Close converter connection
+                converter.close()
 
             except Exception as e:
                 logger.error(f"Graph conversion failed: {e}")
+                import traceback
+                traceback.print_exc()
                 return {
                     "status": "error",
                     "message": f"Failed to convert graph: {str(e)}"

@@ -245,6 +245,21 @@ def create_unified_ui(system=None):
             # ========== TAB 1: Upload & Process ==========
             with gr.TabItem("📤 Upload & Process"):
                 gr.Markdown("### Upload Documents or Add Web Links")
+                gr.Markdown("""
+                **Instructions:**
+                1. Upload PDF, DOCX, TXT, or MD files using the file uploader
+                2. OR paste web URLs (one per line) - supports arXiv, research papers, etc.
+                3. Check "Extract metadata" to get authors, titles, citations
+                4. Check "Build knowledge graph" to create nodes and relationships
+                5. Click "Process All" to start processing
+                
+                **Examples:**
+                - arXiv URL: `https://arxiv.org/abs/1706.03762` (Attention Is All You Need)
+                - arXiv URL: `https://arxiv.org/abs/1810.04805` (BERT paper)
+                - Direct PDF: `https://example.com/research-paper.pdf`
+                
+                **Note:** Processing may take 30-60 seconds per document depending on size.
+                """)
 
                 with gr.Row():
                     with gr.Column():
@@ -616,6 +631,26 @@ def create_unified_ui(system=None):
             # ========== TAB 3: Research Assistant (with Streaming & GNN) ==========
             with gr.TabItem("🔍 Research Assistant"):
                 gr.Markdown("### Ask questions with streaming responses, caching, and GNN reasoning")
+                gr.Markdown("""
+                **Instructions:**
+                1. Type your research question in the text box
+                2. Enable "Use GNN reasoning" for graph-aware analysis
+                3. Enable "Use cache" for faster repeated queries (10-100x speedup)
+                4. Enable "Stream response" to see answers word-by-word in real-time
+                5. Click "Ask" to get your answer
+                
+                **Example Questions:**
+                - "What are the main innovations in transformer architecture?"
+                - "How does BERT differ from GPT models?"
+                - "What are recent advances in Graph Neural Networks?"
+                - "Summarize the key contributions of the Attention Is All You Need paper"
+                - "What are the applications of Graph Attention Networks?"
+                
+                **Tips:**
+                - GNN reasoning provides more accurate answers by using graph structure
+                - Cache saves time for similar questions
+                - More specific questions get better answers
+                """)
 
                 with gr.Row():
                     with gr.Column():
@@ -720,6 +755,22 @@ def create_unified_ui(system=None):
             # ========== TAB 3: Temporal Analysis ==========
             with gr.TabItem("📊 Temporal Analysis"):
                 gr.Markdown("### Analyze how research evolves over time")
+                gr.Markdown("""
+                **Instructions:**
+                Use these tools to track research trends, citation patterns, and emerging topics over time.
+                
+                **Available Analysis Types:**
+                1. **Topic Evolution** - Track how a research topic grows over time
+                2. **Citation Velocity** - Measure how quickly a paper accumulates citations
+                3. **H-Index Timeline** - Track an author's research impact over years
+                4. **Emerging Topics** - Discover new and rapidly growing research areas
+                
+                **Examples:**
+                - Topic Evolution: "Graph Neural Networks" with yearly window
+                - Citation Velocity: Enter a paper title from your uploaded documents
+                - H-Index Timeline: Enter author name (e.g., "Yoshua Bengio")
+                - Emerging Topics: Set year to 2020 and threshold to 0.5
+                """)
 
                 with gr.Tab("Topic Evolution"):
                     topic_input = gr.Textbox(label="Topic", placeholder="e.g., neural networks")
@@ -808,6 +859,28 @@ def create_unified_ui(system=None):
             # ========== TAB 4: Personalized Recommendations ==========
             with gr.TabItem("💡 Recommendations"):
                 gr.Markdown("### Get personalized paper recommendations")
+                gr.Markdown("""
+                **Instructions:**
+                1. Create your user profile with research interests and reading history
+                2. List papers you've read (use titles from uploaded documents)
+                3. List papers you liked (helps improve recommendations)
+                4. Specify your research interests (e.g., "machine learning, GNN, transformers")
+                5. Click "Create/Update Profile" to save your profile
+                6. Adjust diversity slider (0 = similar papers, 1 = exploratory/diverse)
+                7. Click "Get Recommendations" to get personalized suggestions
+                
+                **Example Profile:**
+                - User ID: "researcher123"
+                - Papers Read: "Attention Is All You Need, BERT, GPT-3"
+                - Papers Liked: "Attention Is All You Need"
+                - Interests: "transformers, natural language processing, deep learning"
+                - Diversity: 0.3 (balanced between similar and exploratory)
+                
+                **Tips:**
+                - Higher diversity shows more varied papers outside your usual topics
+                - Lower diversity focuses on papers very similar to your interests
+                - Update your profile as you read more papers for better recommendations
+                """)
 
                 with gr.Row():
                     user_id_input = gr.Textbox(label="User ID", value="user1")
