@@ -74,6 +74,13 @@ GRADIO_PORT=7860
 
 ## 🎯 Key Features
 
+### 🕸️ **NEW: Graph & GNN Dashboard** (Tab 2)
+- **Interactive Graph Visualization**: Explore your knowledge graph with clickable, draggable nodes
+- **GNN Model Training**: Train 4 types of GNN models (GAT, Transformer, Hetero, GCN) directly from UI
+- **Live Graph Statistics**: Real-time node/edge counts, type breakdowns, GNN model status
+- **GNN Predictions**: Link prediction, node classification, and similarity search
+- **Graph Export**: Export your knowledge graph as JSON or CSV
+
 ### 🧠 **GNN-Powered Core**
 - **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
 - **Temporal Analysis**: Research evolution tracking and trend prediction
@@ -176,7 +183,38 @@ python launcher.py
      ```
    - Click "Process URLs"
 
-### Step 4: Ask Questions (Research Assistant)
+### Step 4: Explore Your Graph (NEW: Graph & GNN Dashboard)
+
+1. **Go to Graph & GNN Dashboard tab** (Tab 2)
+2. **View Statistics**:
+   - Click "🔄 Refresh Statistics"
+   - See node counts, edge counts, type breakdowns
+   - Check GNN model status
+3. **Visualize Your Graph**:
+   - Go to "🎨 Visualize Graph" sub-tab
+   - Set max nodes (start with 50-100)
+   - Click "🎨 Generate Visualization"
+   - **Interact**: Click nodes, drag to rearrange, zoom in/out
+4. **Train GNN Models** (Optional - requires PyTorch Geometric):
+   - Go to "🤖 Train GNN Models" sub-tab
+   - Select model type: GAT (recommended), Transformer, Hetero, or GCN
+   - Select task: Link Prediction (finds missing citations)
+   - Set epochs: 50 (default)
+   - Click "🚀 Start Training"
+   - Wait 2-5 minutes
+5. **Get GNN Predictions** (After training):
+   - Go to "🔮 GNN Predictions" sub-tab
+   - Enter paper title or node ID
+   - Select prediction type
+   - Get top-K predictions with scores
+
+**Node Colors in Visualization:**
+- 🔵 Blue = Papers
+- 🟢 Green = Authors
+- 🟡 Yellow = Topics
+- 🟣 Purple = Venues
+
+### Step 5: Ask Questions (Research Assistant)
 
 1. **Go to Research Assistant tab**
 2. **Enter your question**: "What are the main innovations in transformer architecture?"
@@ -188,7 +226,7 @@ python launcher.py
 4. **Adjust Top-K sources** (default: 5)
 5. **Click "Ask Question"**
 
-### Step 5: Explore Advanced Features
+### Step 6: Explore Advanced Features
 
 #### 📊 Temporal Analysis
 - **Topic Evolution**: Enter topic name, select time granularity
@@ -220,7 +258,7 @@ python launcher.py
 - **Citation Cascades**: Track multi-generation influence
 - **Citation Patterns**: Analyze diversity and concentration
 
-### Step 6: Manage Performance
+### Step 7: Manage Performance
 
 #### Cache Management
 - Go to Cache Management tab
@@ -285,6 +323,21 @@ ollama serve
 - Enable caching in Research Assistant tab
 - Reduce Top-K value for faster queries
 - Use Neo4j for large graphs (faster than NetworkX)
+
+**GNN Training Issues**
+```bash
+# If you see "PyTorch Geometric not installed":
+pip install torch torch-geometric
+pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
+
+# For GPU support (CUDA 11.8):
+pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+```
+
+**Graph Visualization Issues**
+- If graph appears empty: Upload documents first (Tab 1)
+- If too slow: Reduce max nodes to 50-100
+- If nodes overlap: Try different layout (circular, spring)
 
 ## 📄 License
 

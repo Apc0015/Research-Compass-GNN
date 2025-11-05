@@ -1,69 +1,181 @@
-# GraphRAG - Complete Requirements
+# Research Compass - Requirements
 # Python 3.11+ required
 
-# Core Dependencies
+# ========================================
+# CORE DEPENDENCIES (Required)
+# ========================================
+
+# Web UI
 gradio>=4.0.0
+
+# Graph Database & In-Memory Graph
 neo4j>=5.0.0
 networkx>=3.0
+
+# Scientific Computing
 numpy>=1.24.0
+scipy>=1.11.0
+
+# Configuration
 python-dotenv>=1.0.0
 
-# Vector Search & Embeddings
-faiss-cpu>=1.7.0
-sentence-transformers>=2.2.0
+# ========================================
+# VECTOR SEARCH & EMBEDDINGS (Required)
+# ========================================
 
-# NLP & Entity Extraction
+# Vector similarity search
+faiss-cpu>=1.7.0
+
+# Text embeddings
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+
+# ========================================
+# NLP & TEXT PROCESSING (Required)
+# ========================================
+
+# Named Entity Recognition
 spacy>=3.7.0
 
-# Document Processing
+# Text processing
+nltk>=3.8.0
+
+# ========================================
+# DOCUMENT PROCESSING (Required)
+# ========================================
+
+# PDF processing
 PyPDF2>=3.0.0
+pdfplumber>=0.7.6
+
+# Word documents
 python-docx>=1.0.0
 
-# Web Content Fetching (NEW)
+# ========================================
+# WEB & DATA FETCHING (Required)
+# ========================================
+
+# HTTP requests
 requests>=2.31.0
+
+# HTML parsing
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
-# Visualization
+# ========================================
+# VISUALIZATION (Required)
+# ========================================
+
+# Interactive network graphs
 pyvis>=0.3.0
+
+# Charts and plots
 plotly>=5.18.0
+
+# Static image export
 kaleido>=0.2.1
 
-# LLM Integration
+# Matplotlib for additional charts
+matplotlib>=3.7.0
+
+# ========================================
+# LLM INTEGRATION (Required)
+# ========================================
+
+# OpenAI API
 openai>=1.0.0
 
-# Utilities
-tqdm>=4.65.0
+# HTTP client for local LLMs
+httpx>=0.24.0
 
-# Date/Time Handling
-python-dateutil>=2.8.0
+# ========================================
+# GNN & MACHINE LEARNING (Core Feature)
+# ========================================
 
-# PDF parsing and scholarly enrichment
-pdfplumber>=0.7.6
-scholarly>=1.7.0
+# Deep learning framework
+torch>=2.0.0
 
-# Community Detection (Better algorithm)
-python-louvain>=0.16
+# Graph Neural Networks
+torch-geometric>=2.3.0
+
+# PyG dependencies (install separately for CPU/GPU)
+# See: https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html
+# For CPU: pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
+# torch-scatter>=2.1.0
+# torch-sparse>=0.6.0
+# pyg-lib
+
+# Machine learning utilities
+scikit-learn>=1.3.0
+
+# ========================================
+# ADVANCED FEATURES (Optional but Recommended)
+# ========================================
 
 # Advanced indexing / retrieval
 llama-index>=0.9.0
 langchain>=0.1.0
+
+# Vector database (alternative to FAISS)
 chromadb>=0.4.0
+
+# LlamaIndex integrations
 llama-index-vector-stores-faiss>=0.1.0
 llama-index-graph-stores-neo4j>=0.1.0
 llama-index-embeddings-huggingface>=0.1.0
 
-# Graph Neural Networks & Machine Learning
-torch>=2.0.0
-torch-geometric>=2.3.0
-torch-scatter>=2.1.0
-torch-sparse>=0.6.0
-scikit-learn>=1.3.0
+# Community detection algorithms
+python-louvain>=0.16
 
-# Development Tools (Optional)
+# Scholarly paper metadata
+scholarly>=1.7.0
+
+# ========================================
+# UTILITIES (Required)
+# ========================================
+
+# Progress bars
+tqdm>=4.65.0
+
+# Date/time handling
+python-dateutil>=2.8.0
+
+# Data structures
+pandas>=2.0.0
+
+# JSON/YAML
+pyyaml>=6.0.0
+
+# ========================================
+# DEVELOPMENT TOOLS (Optional)
+# ========================================
+
 # Uncomment for development:
 # pytest>=7.0.0
 # black>=23.0.0
 # flake8>=6.0.0
 # mypy>=1.0.0
 # watchdog>=3.0.0  # For auto-reload in dev mode
+# jupyter>=1.0.0   # For notebook development
+
+# ========================================
+# INSTALLATION NOTES
+# ========================================
+#
+# Basic Installation (No GNN):
+#   pip install -r requirements.txt
+#
+# With GNN (CPU):
+#   pip install -r requirements.txt
+#   pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
+#
+# With GNN (CUDA 11.8):
+#   pip install -r requirements.txt
+#   pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+#
+# spaCy model (required):
+#   python -m spacy download en_core_web_sm
+#
+# Neo4j (optional - falls back to NetworkX):
+#   Install Neo4j Desktop or Docker:
+#   docker run -p 7687:7687 -p 7474:7474 -e NEO4J_AUTH=neo4j/password neo4j:latest
