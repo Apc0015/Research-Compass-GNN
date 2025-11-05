@@ -361,7 +361,259 @@ def create_unified_ui(system=None):
                     outputs=[processing_status, processing_results]
                 )
 
-            # ========== TAB 2: Research Assistant (with Streaming & GNN) ==========
+            # ========== TAB 2: Graph & GNN Dashboard ==========
+            with gr.TabItem("🕸️ Graph & GNN Dashboard"):
+                gr.Markdown("### Knowledge Graph Visualization & GNN Model Management")
+
+                with gr.Tabs():
+                    # Sub-tab: Graph Statistics
+                    with gr.Tab("📊 Graph Statistics"):
+                        gr.Markdown("View comprehensive statistics about your knowledge graph")
+
+                        stats_refresh_btn = gr.Button("🔄 Refresh Statistics", variant="primary")
+
+                        with gr.Row():
+                            with gr.Column():
+                                graph_size_display = gr.JSON(label="Graph Size")
+                            with gr.Column():
+                                node_types_display = gr.JSON(label="Node Types")
+
+                        with gr.Row():
+                            with gr.Column():
+                                edge_types_display = gr.JSON(label="Edge Types")
+                            with gr.Column():
+                                gnn_status_display = gr.JSON(label="GNN Status")
+
+                        academic_stats_display = gr.JSON(label="Academic Statistics")
+
+                        def refresh_graph_stats():
+                            """Refresh and display graph statistics."""
+                            try:
+                                from src.graphrag.ui.graph_gnn_dashboard import GraphGNNDashboard
+                                dashboard = GraphGNNDashboard(system)
+                                stats = dashboard.get_graph_statistics()
+
+                                return (
+                                    stats.get("graph_size", {}),
+                                    stats.get("node_types", {}),
+                                    stats.get("edge_types", {}),
+                                    stats.get("gnn_status", {}),
+                                    stats.get("academic", {})
+                                )
+                            except Exception as e:
+                                error_msg = {"error": str(e)}
+                                return error_msg, error_msg, error_msg, error_msg, error_msg
+
+                        stats_refresh_btn.click(
+                            refresh_graph_stats,
+                            inputs=[],
+                            outputs=[graph_size_display, node_types_display, edge_types_display, gnn_status_display, academic_stats_display]
+                        )
+
+                    # Sub-tab: Graph Visualization
+                    with gr.Tab("🎨 Visualize Graph"):
+                        gr.Markdown("Explore your knowledge graph interactively")
+
+                        with gr.Row():
+                            max_nodes_slider = gr.Slider(
+                                minimum=10,
+                                maximum=500,
+                                value=100,
+                                step=10,
+                                label="Maximum Nodes to Display"
+                            )
+                            layout_choice = gr.Dropdown(
+                                choices=["spring", "circular", "hierarchical"],
+                                value="spring",
+                                label="Layout Algorithm"
+                            )
+
+                        visualize_btn = gr.Button("🎨 Generate Visualization", variant="primary")
+                        graph_viz_output = gr.HTML(label="Graph Visualization")
+
+                        def generate_graph_viz(max_nodes, layout):
+                            """Generate full graph visualization."""
+                            try:
+                                from src.graphrag.ui.graph_gnn_dashboard import GraphGNNDashboard
+                                dashboard = GraphGNNDashboard(system)
+                                html = dashboard.visualize_full_graph(
+                                    max_nodes=int(max_nodes),
+                                    layout=layout
+                                )
+                                return html
+                            except Exception as e:
+                                return f"<html><body><h2>Error</h2><p>{str(e)}</p><p>Make sure you have uploaded documents first!</p></body></html>"
+
+                        visualize_btn.click(
+                            generate_graph_viz,
+                            inputs=[max_nodes_slider, layout_choice],
+                            outputs=[graph_viz_output]
+                        )
+
+                    # Sub-tab: GNN Training
+                    with gr.Tab("🤖 Train GNN Models"):
+                        gr.Markdown("Train Graph Neural Network models on your knowledge graph")
+
+                        with gr.Row():
+                            with gr.Column():
+                                model_type_choice = gr.Dropdown(
+                                    choices=["gcn", "gat", "transformer", "hetero"],
+                                    value="gat",
+                                    label="Model Type",
+                                    info="GAT (Graph Attention) recommended for most tasks"
+                                )
+
+                                task_type_choice = gr.Dropdown(
+                                    choices=["node_classification", "link_prediction", "embedding"],
+                                    value="link_prediction",
+                                    label="Task Type",
+                                    info="Link prediction finds missing citations"
+                                )
+
+                                epochs_slider = gr.Slider(
+                                    minimum=10,
+                                    maximum=200,
+                                    value=50,
+                                    step=10,
+                                    label="Training Epochs"
+                                )
+
+                                lr_slider = gr.Slider(
+                                    minimum=0.0001,
+                                    maximum=0.1,
+                                    value=0.01,
+                                    step=0.0001,
+                                    label="Learning Rate"
+                                )
+
+                                train_gnn_btn = gr.Button("🚀 Start Training", variant="primary")
+
+                            with gr.Column():
+                                training_status = gr.Textbox(
+                                    label="Training Status",
+                                    lines=10,
+                                    interactive=False
+                                )
+                                training_results = gr.JSON(label="Training Metrics")
+
+                        def train_gnn(model_type, task_type, epochs, lr):
+                            """Train GNN model."""
+                            try:
+                                from src.graphrag.ui.graph_gnn_dashboard import GraphGNNDashboard
+                                dashboard = GraphGNNDashboard(system)
+
+                                status = f"Training {model_type} model for {task_type}...\n"
+                                status += f"Epochs: {epochs}, Learning Rate: {lr}\n\n"
+
+                                results = dashboard.train_gnn_model(
+                                    model_type=model_type,
+                                    task=task_type,
+                                    epochs=int(epochs),
+                                    learning_rate=float(lr)
+                                )
+
+                                if results["status"] == "success":
+                                    status += "✅ Training completed successfully!\n"
+                                    status += f"Results: {results.get('message', '')}"
+                                else:
+                                    status += f"❌ Training failed: {results.get('message', '')}"
+
+                                return status, results.get("metrics", {})
+                            except Exception as e:
+                                return f"❌ Error: {str(e)}", {"error": str(e)}
+
+                        train_gnn_btn.click(
+                            train_gnn,
+                            inputs=[model_type_choice, task_type_choice, epochs_slider, lr_slider],
+                            outputs=[training_status, training_results]
+                        )
+
+                    # Sub-tab: GNN Predictions
+                    with gr.Tab("🔮 GNN Predictions"):
+                        gr.Markdown("Get predictions from trained GNN models")
+
+                        with gr.Row():
+                            with gr.Column():
+                                prediction_type_choice = gr.Dropdown(
+                                    choices=["link_prediction", "node_classification", "similar_nodes"],
+                                    value="link_prediction",
+                                    label="Prediction Type"
+                                )
+
+                                node_id_input = gr.Textbox(
+                                    label="Node ID (paper title or ID)",
+                                    placeholder="Enter paper title or node ID"
+                                )
+
+                                top_k_slider = gr.Slider(
+                                    minimum=5,
+                                    maximum=50,
+                                    value=10,
+                                    step=5,
+                                    label="Top K Results"
+                                )
+
+                                predict_btn = gr.Button("🔮 Get Predictions", variant="primary")
+
+                            with gr.Column():
+                                prediction_output = gr.JSON(label="Predictions")
+
+                        def get_predictions(pred_type, node_id, top_k):
+                            """Get GNN predictions."""
+                            try:
+                                from src.graphrag.ui.graph_gnn_dashboard import GraphGNNDashboard
+                                dashboard = GraphGNNDashboard(system)
+
+                                results = dashboard.get_gnn_predictions(
+                                    prediction_type=pred_type,
+                                    node_id=node_id,
+                                    top_k=int(top_k)
+                                )
+
+                                return results
+                            except Exception as e:
+                                return {"error": str(e)}
+
+                        predict_btn.click(
+                            get_predictions,
+                            inputs=[prediction_type_choice, node_id_input, top_k_slider],
+                            outputs=[prediction_output]
+                        )
+
+                    # Sub-tab: Export Graph
+                    with gr.Tab("💾 Export Graph"):
+                        gr.Markdown("Export your knowledge graph for external analysis")
+
+                        export_format = gr.Dropdown(
+                            choices=["json", "csv"],
+                            value="json",
+                            label="Export Format"
+                        )
+
+                        export_btn = gr.Button("📥 Export Graph Data", variant="primary")
+                        export_output = gr.Textbox(
+                            label="Exported Data",
+                            lines=20,
+                            max_lines=30
+                        )
+
+                        def export_graph(format_choice):
+                            """Export graph data."""
+                            try:
+                                from src.graphrag.ui.graph_gnn_dashboard import GraphGNNDashboard
+                                dashboard = GraphGNNDashboard(system)
+                                data = dashboard.export_graph_data(format=format_choice)
+                                return data
+                            except Exception as e:
+                                return f"Error: {str(e)}"
+
+                        export_btn.click(
+                            export_graph,
+                            inputs=[export_format],
+                            outputs=[export_output]
+                        )
+
+            # ========== TAB 3: Research Assistant (with Streaming & GNN) ==========
             with gr.TabItem("🔍 Research Assistant"):
                 gr.Markdown("### Ask questions with streaming responses, caching, and GNN reasoning")
 
