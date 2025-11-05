@@ -218,10 +218,14 @@ def train_link_predictor(
     lr: float = 0.001,
     batch_size: Optional[int] = None,
     patience: int = 10,
-    save_path: Optional[Path] = None
+    save_path: Optional[Path] = None,
+    checkpoint_path: Optional[Path] = None,
+    checkpoint_interval: int = 10,
+    progress_callback: Optional[callable] = None,
+    resume_from_checkpoint: bool = True
 ) -> Dict:
     """
-    Train link predictor
+    Train link predictor with checkpointing and progress reporting
 
     Args:
         model: CitationPredictor model
@@ -231,16 +235,31 @@ def train_link_predictor(
         batch_size: Batch size (None = full batch)
         patience: Early stopping patience
         save_path: Path to save model
+        checkpoint_path: Path to save checkpoints (for crash recovery)
+        checkpoint_interval: Save checkpoint every N epochs
+        progress_callback: Callback function(epoch, total_epochs, metrics)
+        resume_from_checkpoint: Resume from checkpoint if exists
 
     Returns:
         Training history
     """
+    from .gnn_utils import create_checkpoint, load_checkpoint
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.BCEWithLogitsLoss()
+
+    # Try to resume from checkpoint
+    start_epoch = 0
+    if resume_from_checkpoint and checkpoint_path and checkpoint_path.exists():
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        checkpoint = load_checkpoint(model, optimizer, str(checkpoint_path))
+        if checkpoint:
+            start_epoch = checkpoint['epoch'] + 1
+            print(f"Resumed from epoch {start_epoch}")
 
     # Split edges for training/validation
     num_edges = data.edge_index.size(1)
@@ -264,8 +283,14 @@ def train_link_predictor(
 
     print(f"Training on {device}")
     print(f"Train edges: {train_edges.size(1)}, Val edges: {val_edges.size(1)}")
+    if start_epoch > 0:
+        print(f"Resuming from epoch {start_epoch}")
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
+        # GPU memory management
+        if device.type == 'cuda':
+            torch.cuda.empty_cache()
+
         # Training
         model.train()
         optimizer.zero_grad()
@@ -326,12 +351,33 @@ def train_link_predictor(
         history['train_auc'].append(train_auc)
         history['val_auc'].append(val_auc)
 
+        # Progress callback
+        if progress_callback:
+            try:
+                progress_callback(
+                    epoch + 1,
+                    epochs,
+                    {
+                        'train_loss': loss.item(),
+                        'val_loss': val_loss.item(),
+                        'train_auc': train_auc,
+                        'val_auc': val_auc
+                    }
+                )
+            except Exception as e:
+                print(f"Progress callback error: {e}")
+
         if (epoch + 1) % 10 == 0:
             print(f'Epoch {epoch + 1:03d}: '
                   f'Train Loss: {loss.item():.4f}, '
                   f'Val Loss: {val_loss.item():.4f}, '
                   f'Train AUC: {train_auc:.4f}, '
                   f'Val AUC: {val_auc:.4f}')
+
+        # Periodic checkpoint (for crash recovery)
+        if checkpoint_path and (epoch + 1) % checkpoint_interval == 0:
+            create_checkpoint(model, optimizer, epoch, loss.item(), str(checkpoint_path))
+            print(f"  Checkpoint saved at epoch {epoch + 1}")
 
         # Early stopping
         if val_loss < best_val_loss:

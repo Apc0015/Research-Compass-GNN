@@ -80,7 +80,10 @@ class Neo4jToTorchGeometric:
         self,
         node_types: Optional[List[str]] = None,
         edge_types: Optional[List[str]] = None,
-        use_cache: bool = True
+        use_cache: bool = True,
+        max_nodes: int = 10000,
+        use_batching: bool = False,
+        batch_size: int = 1000
     ):
         """
         Export Neo4j graph to PyTorch Geometric Data object
@@ -89,6 +92,9 @@ class Neo4jToTorchGeometric:
             node_types: List of node labels to include (None = all)
             edge_types: List of relationship types to include (None = all)
             use_cache: Whether to use cached version if available
+            max_nodes: Maximum number of nodes to load
+            use_batching: Use batched loading for large graphs (memory efficient)
+            batch_size: Batch size for batched loading
 
         Returns:
             torch_geometric.data.Data object
@@ -103,8 +109,17 @@ class Neo4jToTorchGeometric:
 
         print("Exporting graph from Neo4j...")
 
-        # Get nodes with embeddings
-        nodes_data = self._fetch_nodes(node_types)
+        if use_batching:
+            print(f"Using batched loading (batch_size={batch_size}) for memory efficiency")
+            # Load nodes in batches
+            all_nodes = []
+            for batch in self._fetch_nodes_batched(node_types, batch_size, max_nodes):
+                all_nodes.extend(batch)
+                print(f"  Loaded {len(all_nodes)} nodes so far...")
+            nodes_data = all_nodes
+        else:
+            # Get nodes with embeddings (all at once)
+            nodes_data = self._fetch_nodes(node_types, max_nodes)
 
         # Get edges
         edges_data = self._fetch_edges(node_types, edge_types)
@@ -184,12 +199,13 @@ class Neo4jToTorchGeometric:
             edge_types=['COAUTHOR', 'COLLABORATED_WITH', 'RELATED']
         )
 
-    def _fetch_nodes(self, node_types: Optional[List[str]] = None) -> List[Dict]:
+    def _fetch_nodes(self, node_types: Optional[List[str]] = None, max_nodes: int = 10000) -> List[Dict]:
         """
         Fetch nodes from Neo4j with embeddings
 
         Args:
             node_types: Node labels to fetch
+            max_nodes: Maximum number of nodes to fetch
 
         Returns:
             List of node dictionaries with embeddings
@@ -203,15 +219,15 @@ class Neo4jToTorchGeometric:
                 WHERE {label_filter}
                 RETURN n.id as id, n.name as name, n.embedding as embedding,
                        labels(n) as labels, properties(n) as properties
-                LIMIT 10000
+                LIMIT {max_nodes}
                 """
             else:
                 # Fetch all nodes
-                query = """
+                query = f"""
                 MATCH (n:Entity)
                 RETURN n.id as id, n.name as name, n.embedding as embedding,
                        labels(n) as labels, properties(n) as properties
-                LIMIT 10000
+                LIMIT {max_nodes}
                 """
 
             result = session.run(query)
@@ -228,6 +244,76 @@ class Neo4jToTorchGeometric:
                 nodes.append(node_dict)
 
             return nodes
+
+    def _fetch_nodes_batched(
+        self,
+        node_types: Optional[List[str]] = None,
+        batch_size: int = 1000,
+        max_nodes: Optional[int] = None
+    ):
+        """
+        Fetch nodes from Neo4j in batches (generator for memory efficiency)
+
+        Args:
+            node_types: Node labels to fetch
+            batch_size: Number of nodes per batch
+            max_nodes: Maximum total nodes (None = unlimited)
+
+        Yields:
+            Batches of node dictionaries
+        """
+        skip = 0
+        total_fetched = 0
+
+        while True:
+            # Determine how many to fetch in this batch
+            limit = batch_size
+            if max_nodes and (total_fetched + batch_size) > max_nodes:
+                limit = max_nodes - total_fetched
+                if limit <= 0:
+                    break
+
+            with self.driver.session() as session:
+                if node_types:
+                    label_filter = " OR ".join([f"'{label}' IN labels(n)" for label in node_types])
+                    query = f"""
+                    MATCH (n)
+                    WHERE {label_filter}
+                    RETURN n.id as id, n.name as name, n.embedding as embedding,
+                           labels(n) as labels, properties(n) as properties
+                    SKIP {skip}
+                    LIMIT {limit}
+                    """
+                else:
+                    query = f"""
+                    MATCH (n:Entity)
+                    RETURN n.id as id, n.name as name, n.embedding as embedding,
+                           labels(n) as labels, properties(n) as properties
+                    SKIP {skip}
+                    LIMIT {limit}
+                    """
+
+                result = session.run(query)
+                batch = []
+
+                for record in result:
+                    node_dict = dict(record)
+                    embedding = node_dict.get('embedding')
+                    embedding = safe_parse_embedding(embedding, default_dim=self.embedding_dim)
+                    node_dict['embedding'] = embedding
+                    batch.append(node_dict)
+
+                if not batch:
+                    # No more nodes
+                    break
+
+                yield batch
+
+                total_fetched += len(batch)
+                skip += batch_size
+
+                if max_nodes and total_fetched >= max_nodes:
+                    break
 
     def _fetch_edges(
         self,
@@ -334,28 +420,65 @@ class Neo4jToTorchGeometric:
         data: 'Data',
         train_ratio: float = 0.7,
         val_ratio: float = 0.15,
-        test_ratio: float = 0.15
+        test_ratio: float = 0.15,
+        min_samples_per_split: int = 10,
+        seed: Optional[int] = None
     ) -> 'Data':
         """
-        Create train/validation/test split masks
+        Create train/validation/test split masks with validation
 
         Args:
             data: PyG Data object
-            train_ratio: Proportion for training
-            val_ratio: Proportion for validation
-            test_ratio: Proportion for testing
+            train_ratio: Proportion for training (0.0-1.0)
+            val_ratio: Proportion for validation (0.0-1.0)
+            test_ratio: Proportion for testing (0.0-1.0)
+            min_samples_per_split: Minimum samples required per split
+            seed: Random seed for reproducibility
 
         Returns:
             Data object with train_mask, val_mask, test_mask
+
+        Raises:
+            ValueError: If ratios don't sum to 1.0 or splits are too small
         """
-        assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6
+        # Validate ratios
+        if not (0 < train_ratio <= 1.0 and 0 <= val_ratio <= 1.0 and 0 <= test_ratio <= 1.0):
+            raise ValueError(f"Ratios must be between 0 and 1. Got: train={train_ratio}, val={val_ratio}, test={test_ratio}")
 
+        if abs(train_ratio + val_ratio + test_ratio - 1.0) > 1e-6:
+            raise ValueError(f"Ratios must sum to 1.0. Got: {train_ratio + val_ratio + test_ratio}")
+
+        # Validate minimum samples
         num_nodes = data.num_nodes
-        indices = torch.randperm(num_nodes)
 
+        if num_nodes < 3 * min_samples_per_split:
+            raise ValueError(
+                f"Graph too small for splits. Need at least {3 * min_samples_per_split} nodes "
+                f"(3 splits × {min_samples_per_split} min samples), but have {num_nodes}."
+            )
+
+        # Calculate split sizes
         train_size = int(num_nodes * train_ratio)
         val_size = int(num_nodes * val_ratio)
+        test_size = num_nodes - train_size - val_size  # Ensure all nodes are used
 
+        # Validate each split meets minimum
+        if train_size < min_samples_per_split:
+            raise ValueError(f"Training split too small: {train_size} < {min_samples_per_split}. Increase train_ratio or reduce minimum.")
+
+        if val_ratio > 0 and val_size < min_samples_per_split:
+            raise ValueError(f"Validation split too small: {val_size} < {min_samples_per_split}. Increase val_ratio or reduce minimum.")
+
+        if test_ratio > 0 and test_size < min_samples_per_split:
+            raise ValueError(f"Test split too small: {test_size} < {min_samples_per_split}. Increase test_ratio or reduce minimum.")
+
+        # Create random permutation (with optional seed)
+        if seed is not None:
+            torch.manual_seed(seed)
+
+        indices = torch.randperm(num_nodes)
+
+        # Create masks
         train_mask = torch.zeros(num_nodes, dtype=torch.bool)
         val_mask = torch.zeros(num_nodes, dtype=torch.bool)
         test_mask = torch.zeros(num_nodes, dtype=torch.bool)
@@ -367,6 +490,9 @@ class Neo4jToTorchGeometric:
         data.train_mask = train_mask
         data.val_mask = val_mask
         data.test_mask = test_mask
+
+        # Log split info
+        logger.info(f"Created splits: train={train_size}, val={val_size}, test={test_size}")
 
         return data
 

@@ -297,28 +297,27 @@ Security
 
 ## ⚠️ REMAINING ISSUES (Phase 2 & 3)
 
+### ✅ PHASE 2 NOW COMPLETE!
+
+See `GNN_PHASE2_FIXES.md` for full details.
+
+**Phase 2 Fixed (November 5, 2025):**
+- ✅ #7: Model checkpointing - Training resume after crashes
+- ✅ #8: Memory issues - Batched graph loading
+- ✅ #9: Progress feedback - Real-time Gradio progress bars
+- ✅ #11: Fixed splits - Configurable train/val/test ratios
+- ✅ GPU memory management - torch.cuda.empty_cache() added
+
 ### Not Yet Fixed:
 
 #### Critical (Phase 2):
-7. **No model checkpointing** - Training progress lost on crash
-   - Functions ready: `create_checkpoint()`, `load_checkpoint()`
-   - Need to integrate into training loop
-
-9. **No progress feedback** - Users think app is frozen
-   - Need to add Gradio progress bars
-   - Need to stream epoch updates
-
-8. **Memory issues** - Large graphs load 10,000 nodes at once
-   - Need batching implementation
+~~7. **No model checkpointing**~~ - ✅ FIXED in Phase 2
+~~9. **No progress feedback**~~ - ✅ FIXED in Phase 2
+~~8. **Memory issues**~~ - ✅ FIXED in Phase 2
 
 #### Medium (Phase 2):
-11. **Fixed train/val/test split** - Always 80/10/10
-   - Need to make split ratios configurable
-   - Need minimum size checks
-
-13. **No GPU memory management** - OOM errors with no guidance
-   - Need to add `torch.cuda.empty_cache()`
-   - Need batch size suggestions
+~~11. **Fixed train/val/test split**~~ - ✅ FIXED in Phase 2
+~~13. **No GPU memory management**~~ - ✅ FIXED in Phase 2
 
 #### Low (Phase 3):
 - Model performance metrics display

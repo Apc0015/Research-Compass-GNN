@@ -276,16 +276,18 @@ class GraphGNNDashboard:
         model_type: str,
         task: str,
         epochs: int = 50,
-        learning_rate: float = 0.01
+        learning_rate: float = 0.01,
+        progress=None
     ) -> Dict[str, Any]:
         """
-        Train a GNN model with comprehensive validation and error handling.
+        Train a GNN model with comprehensive validation, error handling, and progress reporting.
 
         Args:
             model_type: Type of GNN (gcn, gat, transformer, hetero)
             task: Task type (node_classification, link_prediction, embedding)
             epochs: Number of training epochs
             learning_rate: Learning rate
+            progress: Gradio progress object for real-time updates
 
         Returns:
             Training results and metrics
@@ -404,9 +406,21 @@ Note: NetworkX fallback support coming soon!
                     "message": error_msg
                 }
 
-            # STEP 5: Train model with comprehensive error handling
+            # STEP 5: Train model with comprehensive error handling and progress tracking
             logger.info(f"Training {model_type} for {task} task ({epochs} epochs)...")
             logger.info(f"Estimated training time: {time_estimate}")
+
+            # Create progress callback for Gradio
+            def training_progress_callback(current_epoch, total_epochs, metrics):
+                """Update Gradio progress bar during training"""
+                if progress:
+                    progress_pct = current_epoch / total_epochs
+                    desc = f"Epoch {current_epoch}/{total_epochs} - Loss: {metrics.get('train_loss', 0):.4f}"
+                    progress(progress_pct, desc=desc)
+
+            # Show initial progress
+            if progress:
+                progress(0, desc="Initializing training...")
 
             try:
                 results = gnn_mgr.train(
@@ -414,7 +428,8 @@ Note: NetworkX fallback support coming soon!
                     model_type=model_type,
                     task=task,
                     epochs=epochs,
-                    lr=learning_rate
+                    lr=learning_rate,
+                    progress_callback=training_progress_callback
                 )
 
                 success_msg = f"""

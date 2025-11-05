@@ -138,10 +138,14 @@ def train_node_classifier(
     lr: float = 0.01,
     weight_decay: float = 5e-4,
     patience: int = 10,
-    save_path: Optional[Path] = None
+    save_path: Optional[Path] = None,
+    checkpoint_path: Optional[Path] = None,
+    checkpoint_interval: int = 10,
+    progress_callback: Optional[callable] = None,
+    resume_from_checkpoint: bool = True
 ) -> Dict:
     """
-    Train node classifier with early stopping
+    Train node classifier with early stopping, checkpointing, and progress reporting
 
     Args:
         model: PaperClassifier model
@@ -151,10 +155,16 @@ def train_node_classifier(
         weight_decay: L2 regularization
         patience: Early stopping patience
         save_path: Path to save best model
+        checkpoint_path: Path to save checkpoints (for crash recovery)
+        checkpoint_interval: Save checkpoint every N epochs
+        progress_callback: Callback function(epoch, total_epochs, metrics)
+        resume_from_checkpoint: Resume from checkpoint if exists
 
     Returns:
         Training history dictionary
     """
+    from .gnn_utils import create_checkpoint, load_checkpoint
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     data = data.to(device)
@@ -164,6 +174,15 @@ def train_node_classifier(
         lr=lr,
         weight_decay=weight_decay
     )
+
+    # Try to resume from checkpoint
+    start_epoch = 0
+    if resume_from_checkpoint and checkpoint_path and checkpoint_path.exists():
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        checkpoint = load_checkpoint(model, optimizer, str(checkpoint_path))
+        if checkpoint:
+            start_epoch = checkpoint['epoch'] + 1
+            print(f"Resumed from epoch {start_epoch}")
 
     # Loss function
     if hasattr(data, 'y'):
@@ -188,8 +207,14 @@ def train_node_classifier(
 
     print(f"Training on {device}")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+    if start_epoch > 0:
+        print(f"Resuming from epoch {start_epoch}")
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
+        # GPU memory management
+        if device.type == 'cuda':
+            torch.cuda.empty_cache()
+
         # Training
         model.train()
         optimizer.zero_grad()
@@ -228,6 +253,22 @@ def train_node_classifier(
         history['train_acc'].append(train_acc.item() if isinstance(train_acc, torch.Tensor) else train_acc)
         history['val_acc'].append(val_acc.item() if isinstance(val_acc, torch.Tensor) else val_acc)
 
+        # Progress callback
+        if progress_callback:
+            try:
+                progress_callback(
+                    epoch + 1,
+                    epochs,
+                    {
+                        'train_loss': loss.item(),
+                        'val_loss': val_loss.item(),
+                        'train_acc': train_acc.item() if isinstance(train_acc, torch.Tensor) else train_acc,
+                        'val_acc': val_acc.item() if isinstance(val_acc, torch.Tensor) else val_acc
+                    }
+                )
+            except Exception as e:
+                print(f"Progress callback error: {e}")
+
         # Print progress
         if (epoch + 1) % 10 == 0:
             print(f'Epoch {epoch + 1:03d}: '
@@ -235,6 +276,11 @@ def train_node_classifier(
                   f'Val Loss: {val_loss.item():.4f}, '
                   f'Train Acc: {train_acc:.4f}, '
                   f'Val Acc: {val_acc:.4f}')
+
+        # Periodic checkpoint (for crash recovery)
+        if checkpoint_path and (epoch + 1) % checkpoint_interval == 0:
+            create_checkpoint(model, optimizer, epoch, loss.item(), str(checkpoint_path))
+            print(f"  Checkpoint saved at epoch {epoch + 1}")
 
         # Early stopping
         if val_loss < best_val_loss:
