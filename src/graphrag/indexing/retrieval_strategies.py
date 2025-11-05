@@ -24,8 +24,8 @@ class HybridRetriever:
         dense = []
         try:
             dense = self.vs.search(query, top_k=top_k)
-        except Exception:
-            logger.exception("Dense retrieval failed; returning empty list")
+        except (ValueError, AttributeError, RuntimeError, ConnectionError) as e:
+            logger.error("Dense retrieval failed: %s. Returning empty list", str(e), exc_info=True)
 
         # Sparse: naive substring matches
         sparse_hits = []
@@ -36,7 +36,8 @@ class HybridRetriever:
                     score = txt.lower().count(query.lower())
                     sparse_hits.append((txt, float(score), self.vs.documents[i] if i < len(self.vs.documents) else {}))
             sparse_hits.sort(key=lambda x: x[1], reverse=True)
-        except Exception:
+        except (AttributeError, TypeError, IndexError) as e:
+            logger.warning("Sparse retrieval failed: %s. Returning empty list", str(e))
             sparse_hits = []
 
         # Combine and rerank by weighted sum
@@ -64,8 +65,8 @@ class GraphAwareRetriever:
         chunks = []
         try:
             chunks = self.vs.search(query, top_k=10)
-        except Exception:
-            logger.exception("Vector search failed in GraphAwareRetriever")
+        except (ValueError, AttributeError, RuntimeError, ConnectionError) as e:
+            logger.error("Vector search failed in GraphAwareRetriever: %s", str(e), exc_info=True)
 
         graph_context = []
         if self.graph:
@@ -76,8 +77,8 @@ class GraphAwareRetriever:
                     try:
                         ctx = self.graph.export_subgraph(pid, max_depth)
                         graph_context.append({'paper_id': pid, 'subgraph': ctx})
-                    except Exception:
-                        logger.debug("No graph context for %s", pid)
+                    except (AttributeError, KeyError, ValueError, RuntimeError) as e:
+                        logger.debug("No graph context for paper %s: %s", pid, str(e))
 
         return {'chunks': chunks, 'graph_context': graph_context}
 
@@ -92,8 +93,8 @@ class CitationAwareRetriever:
         chunks = []
         try:
             chunks = self.vs.search(query, top_k=10)
-        except Exception:
-            logger.exception("Vector search failed in CitationAwareRetriever")
+        except (ValueError, AttributeError, RuntimeError, ConnectionError) as e:
+            logger.error("Vector search failed in CitationAwareRetriever: %s", str(e), exc_info=True)
 
         if not self.graph:
             return [{'chunk': c, 'citations': []} for c in chunks]
@@ -110,8 +111,8 @@ class CitationAwareRetriever:
                     if include_citing:
                         citing = self.graph.get_citation_network(pid, depth=max_citation_depth)
                         citations.append({'citing': citing})
-                except Exception:
-                    logger.exception("Failed to fetch citation network for %s", pid)
+                except (AttributeError, KeyError, ValueError, RuntimeError) as e:
+                    logger.error("Failed to fetch citation network for paper %s: %s", pid, str(e), exc_info=True)
 
             results.append({'chunk': txt, 'score': score, 'citations': citations})
 
@@ -127,8 +128,8 @@ class TemporalRetriever:
         hits = []
         try:
             hits = self.vs.search(query, top_k=50)
-        except Exception:
-            logger.exception("Vector search failed in TemporalRetriever")
+        except (ValueError, AttributeError, RuntimeError, ConnectionError) as e:
+            logger.error("Vector search failed in TemporalRetriever: %s", str(e), exc_info=True)
 
         ranked = []
         for txt, score, meta in hits:
@@ -139,8 +140,8 @@ class TemporalRetriever:
                     start, end = time_range
                     if start <= int(year) <= end:
                         boost = recency_boost
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("Failed to parse year %s with time_range %s: %s", year, time_range, str(e))
             ranked.append((txt, score - boost))
 
         ranked.sort(key=lambda x: x[1])
@@ -157,8 +158,8 @@ class MultiHopRetriever:
         seeds = []
         try:
             seeds = self.vs.search(query, top_k=10)
-        except Exception:
-            logger.exception("Vector search failed in MultiHopRetriever")
+        except (ValueError, AttributeError, RuntimeError, ConnectionError) as e:
+            logger.error("Vector search failed in MultiHopRetriever: %s", str(e), exc_info=True)
 
         expanded = []
         if self.graph:
@@ -168,7 +169,18 @@ class MultiHopRetriever:
                     try:
                         sub = self.graph.get_citation_network(pid, depth=num_hops)
                         expanded.append({'seed': pid, 'subgraph': sub})
-                    except Exception:
-                        pass
+                    except (AttributeError, KeyError, ValueError, RuntimeError) as e:
+                        logger.debug("Failed to get citation network for paper %s: %s", pid, str(e))
 
         return {'seeds': seeds, 'expanded': expanded}
+
+
+class RetrievalStrategies:
+    """Container class for all retrieval strategies."""
+    
+    def __init__(self, vector_search=None, graph=None):
+        self.hybrid = HybridRetriever(vector_search)
+        self.graph_aware = GraphAwareRetriever(vector_search, graph)
+        self.citation_aware = CitationAwareRetriever(vector_search, graph)
+        self.temporal = TemporalRetriever(vector_search)
+        self.multi_hop = MultiHopRetriever(vector_search, graph)

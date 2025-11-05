@@ -50,8 +50,8 @@ class ImpactMetricsCalculator:
                 else:
                     break
             return h
-        except Exception:
-            logger.exception("Failed to calculate h-index")
+        except (AttributeError, KeyError, ValueError, RuntimeError) as e:
+            logger.error("Failed to calculate h-index for author %s: %s", author_id, str(e), exc_info=True)
             return 0
 
     def calculate_paper_pagerank(self, paper_id: str) -> float:
@@ -69,8 +69,8 @@ class ImpactMetricsCalculator:
 
             pr = nx.pagerank(G)
             return float(pr.get(paper_id, 0.0))
-        except Exception:
-            logger.exception("Failed to compute PageRank")
+        except (AttributeError, KeyError, ValueError, RuntimeError, nx.NetworkXError) as e:
+            logger.error("Failed to compute PageRank for paper %s: %s", paper_id, str(e), exc_info=True)
             return 0.0
 
     def calculate_author_betweenness(self, author_id: str) -> float:
@@ -87,8 +87,8 @@ class ImpactMetricsCalculator:
 
             bet = nx.betweenness_centrality(coG)
             return float(bet.get(author_id, 0.0))
-        except Exception:
-            logger.exception("Failed to compute author betweenness")
+        except (AttributeError, KeyError, ValueError, RuntimeError, nx.NetworkXError) as e:
+            logger.error("Failed to compute author betweenness for %s: %s", author_id, str(e), exc_info=True)
             return 0.0
 
     def calculate_venue_impact_factor(self, venue_id: str) -> float:
@@ -117,8 +117,8 @@ class ImpactMetricsCalculator:
                         if data.get('type') == 'CITES':
                             total_cites += 1
                 return float(total_cites) / float(len(papers))
-        except Exception:
-            logger.exception("Failed to compute venue impact factor")
+        except (AttributeError, KeyError, ValueError, ZeroDivisionError, RuntimeError) as e:
+            logger.error("Failed to compute venue impact factor for %s: %s", venue_id, str(e), exc_info=True)
             return 0.0
 
 
