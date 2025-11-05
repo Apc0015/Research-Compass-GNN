@@ -1,146 +1,290 @@
-# 🧭 Research Compass
+# Research Compass# 🧭 Research Compass
 
-> **Advanced AI-powered research exploration platform with Graph Neural Networks**
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()
 
-**Research Compass** is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.
+**Advanced AI-powered research exploration platform with Graph Neural Networks**> **Advanced AI-powered research exploration platform with Graph Neural Networks**
 
-## 🚀 Quick Start
 
-```bash
-# 1. Clone and setup
-git clone <repository-url>
-cd "Research Compass"
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()
+
+
+
+Research Compass is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.**Research Compass** is a cutting-edge research platform that combines knowledge graphs, vector embeddings, and Graph Neural Networks (GNNs) to provide intelligent paper recommendations, citation analysis, and research insights.
+
+
+
+## Quick Start## 🚀 Quick Start
+
+
+
+### Prerequisites```bash
+
+- Python 3.11+ (recommended: conda environment)# 1. Clone and setup
+
+- Neo4j Aura account (free tier available) or Neo4j Desktopgit clone <repository-url>
+
+- LLM provider (Ollama, OpenRouter, OpenAI, or LM Studio)cd "Research Compass"
+
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# 2. Install dependencies
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+### Installationsource .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+
+
+```bash# 2. Install dependencies
+
+# Clone repositorypip install -r requirements.txt
+
+git clone <repository-url>python -m spacy download en_core_web_sm
+
+cd "Research Compass"
 
 # 3. Setup LLM (Ollama recommended)
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama pull llama3.2
-ollama serve
 
-# 4. Configure
-cp .env.example .env
-# Edit .env with your settings
+# Create conda environment (recommended)curl -fsSL https://ollama.ai/install.sh | sh
 
-# 5. Launch
+conda create -n research_compass python=3.11 -yollama pull llama3.2
+
+conda activate research_compassollama serve
+
+
+
+# Install dependencies# 4. Configure
+
+pip install -r requirements.txtcp .env.example .env
+
+python -m spacy download en_core_web_sm# Edit .env with your settings
+
+
+
+# Configure environment# 5. Launch
+
+cp .env.example .envpython launcher.py
+
+# Edit .env with your settings```
+
+
+
+# Launch applicationAccess at **http://localhost:7860**
+
 python launcher.py
-```
 
-Access at **http://localhost:7860**
+```## ⚙️ Configuration
 
-## ⚙️ Configuration
 
-Create `.env` file in project root:
 
-```bash
+Access at: http://localhost:7860Create `.env` file in project root:
+
+
+
+## Configuration```bash
+
 # LLM Configuration
-LLM_PROVIDER=ollama
-LLM_MODEL=llama3.2
-LLM_TEMPERATURE=0.3
-LLM_MAX_TOKENS=1000
 
-# Local LLM URLs
-OLLAMA_BASE_URL=http://localhost:11434
+Create `.env` file in project root:LLM_PROVIDER=ollama
+
+LLM_MODEL=llama3.2
+
+```bashLLM_TEMPERATURE=0.3
+
+# Neo4j ConfigurationLLM_MAX_TOKENS=1000
+
+NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+
+NEO4J_USERNAME=neo4j# Local LLM URLs
+
+NEO4J_PASSWORD=your_passwordOLLAMA_BASE_URL=http://localhost:11434
+
 LMSTUDIO_BASE_URL=http://localhost:1234
 
-# Cloud LLM API Keys (optional)
-OPENROUTER_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
+# LLM Configuration
 
-# Neo4j Configuration (optional)
-NEO4J_URI=neo4j://127.0.0.1:7687
-NEO4J_USER=neo4j
+LLM_PROVIDER=ollama# Cloud LLM API Keys (optional)
+
+LLM_MODEL=llama3.2OPENROUTER_API_KEY=your_key_here
+
+OLLAMA_BASE_URL=http://localhost:11434OPENAI_API_KEY=your_key_here
+
+
+
+# Cloud LLM (optional)# Neo4j Configuration (optional)
+
+OPENROUTER_API_KEY=your_keyNEO4J_URI=neo4j://127.0.0.1:7687
+
+OPENAI_API_KEY=your_keyNEO4J_USER=neo4j
+
 NEO4J_PASSWORD=your_password
 
-# Embedding Model
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+# Application Settings
 
-# Cache Settings
+GRADIO_PORT=7860# Embedding Model
+
+```EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+
+
+
+## Key Features# Cache Settings
+
 CACHE_DIR=data/cache
-MAX_CACHE_ITEMS=1000
-DEFAULT_CACHE_TTL=3600
 
-# Server Settings
-GRADIO_PORT=7860
+- **Graph & GNN Dashboard**: Interactive visualization, model training, predictionsMAX_CACHE_ITEMS=1000
+
+- **Document Processing**: PDF, DOCX, TXT, Markdown support with automated graph constructionDEFAULT_CACHE_TTL=3600
+
+- **GNN-Powered Analysis**: Link prediction, node classification, temporal analysis
+
+- **Visualization**: Interactive citation networks, collaboration graphs, attention maps# Server Settings
+
+- **Research Assistant**: Natural language queries with graph-aware responsesGRADIO_PORT=7860
+
 ```
+
+## Technology Stack
 
 ## 🎯 Key Features
 
-### 🕸️ **NEW: Graph & GNN Dashboard** (Tab 2)
-- **Interactive Graph Visualization**: Explore your knowledge graph with clickable, draggable nodes
-- **GNN Model Training**: Train 4 types of GNN models (GAT, Transformer, Hetero, GCN) directly from UI
-- **Live Graph Statistics**: Real-time node/edge counts, type breakdowns, GNN model status
-- **GNN Predictions**: Link prediction, node classification, and similarity search
-- **Graph Export**: Export your knowledge graph as JSON or CSV
+| Component | Technology |
 
-### 🧠 **GNN-Powered Core**
-- **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
+|-----------|-----------|### 🕸️ **NEW: Graph & GNN Dashboard** (Tab 2)
+
+| Language | Python 3.11+ |- **Interactive Graph Visualization**: Explore your knowledge graph with clickable, draggable nodes
+
+| Graph Database | Neo4j 5.0+ / NetworkX |- **GNN Model Training**: Train 4 types of GNN models (GAT, Transformer, Hetero, GCN) directly from UI
+
+| Vector Search | FAISS |- **Live Graph Statistics**: Real-time node/edge counts, type breakdowns, GNN model status
+
+| NLP/NER | spaCy 3.7+ |- **GNN Predictions**: Link prediction, node classification, and similarity search
+
+| Embeddings | Sentence Transformers |- **Graph Export**: Export your knowledge graph as JSON or CSV
+
+| Web UI | Gradio 4.0+ |
+
+| GNN Framework | PyTorch Geometric |### 🧠 **GNN-Powered Core**
+
+| Visualization | Pyvis, Plotly, NetworkX |- **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
+
 - **Temporal Analysis**: Research evolution tracking and trend prediction
-- **Neural Recommendations**: GNN-based personalized paper suggestions
+
+## Project Structure- **Neural Recommendations**: GNN-based personalized paper suggestions
+
 - **Graph Search**: Semantic + structural search with graph context
 
-### 📚 **Document Processing**
-- **Multi-Format Support**: PDF, DOCX, TXT, Markdown processing
-- **Knowledge Graph Construction**: Automated entity and relationship extraction
-- **Batch Processing**: Handle multiple files simultaneously
-- **Web URL Import**: Direct processing from arXiv and other sources
+```
 
-### 🎨 **Visualization & Analytics**
-- **Interactive Networks**: Clickable citation and collaboration graphs
-- **Attention Visualization**: See how GNN models make decisions
-- **Citation Analysis**: Disruption index, sleeping beauty detection
-- **Temporal Charts**: Research trends over time
+Research Compass/### 📚 **Document Processing**
 
-### 🤖 **User Experience**
-- **Streaming Responses**: Real-time word-by-word answer display
+├── launcher.py           # Main application launcher- **Multi-Format Support**: PDF, DOCX, TXT, Markdown processing
+
+├── requirements.txt      # Python dependencies- **Knowledge Graph Construction**: Automated entity and relationship extraction
+
+├── config/              # Configuration files- **Batch Processing**: Handle multiple files simultaneously
+
+├── src/graphrag/        # Core system- **Web URL Import**: Direct processing from arXiv and other sources
+
+│   ├── core/           # System core
+
+│   ├── analytics/      # Analytics modules### 🎨 **Visualization & Analytics**
+
+│   ├── ml/             # Machine learning & GNN- **Interactive Networks**: Clickable citation and collaboration graphs
+
+│   ├── ui/             # User interface- **Attention Visualization**: See how GNN models make decisions
+
+│   └── visualization/  # Graph visualization- **Citation Analysis**: Disruption index, sleeping beauty detection
+
+├── data/               # Data storage- **Temporal Charts**: Research trends over time
+
+├── models/             # Trained models
+
+└── tests/              # Unit tests### 🤖 **User Experience**
+
+```- **Streaming Responses**: Real-time word-by-word answer display
+
 - **Intelligent Caching**: 10-100x performance optimization
-- **Settings Panel**: User-friendly configuration with connection testing
+
+## Usage- **Settings Panel**: User-friendly configuration with connection testing
+
 - **Multi-Provider LLM**: Ollama, LM Studio, OpenRouter, OpenAI
 
-## 🏗️ Technology Stack
+```bash
 
-| Component | Technology |
+# Start application## 🏗️ Technology Stack
+
+conda activate research_compass
+
+python launcher.py| Component | Technology |
+
 |-----------|-----------|
-| **Language** | Python 3.11+ |
-| **Graph Database** | Neo4j 5.0+ / NetworkX |
+
+# Custom port| **Language** | Python 3.11+ |
+
+python launcher.py --port 8080| **Graph Database** | Neo4j 5.0+ / NetworkX |
+
 | **Vector Search** | FAISS |
-| **NLP/NER** | spaCy 3.7+ |
-| **Embeddings** | Sentence Transformers |
-| **Web UI** | Gradio 4.0+ |
+
+# Public sharing| **NLP/NER** | spaCy 3.7+ |
+
+python launcher.py --share| **Embeddings** | Sentence Transformers |
+
+```| **Web UI** | Gradio 4.0+ |
+
 | **GNN Framework** | PyTorch Geometric |
-| **Visualization** | Pyvis, Plotly, NetworkX |
 
-## 📂 Project Structure
+## Troubleshooting| **Visualization** | Pyvis, Plotly, NetworkX |
 
-```
+
+
+### Neo4j Connection Issues## 📂 Project Structure
+
+- **Cloud**: Verify URI format `neo4j+s://xxxxx.databases.neo4j.io` and password
+
+- **Local**: Start Neo4j Desktop and verify `neo4j://localhost:7687````
+
 Research Compass/
-├── launcher.py                    # Main application launcher
-├── requirements.txt               # Python dependencies
-├── config/                      # Configuration files
-│   ├── academic_config.yaml
-│   └── settings.py
-├── src/graphrag/                 # Core GNN system
-│   ├── core/                     # System core
-│   ├── analytics/                 # Analytics modules
-│   ├── ml/                        # Machine learning
-│   ├── visualization/             # Graph visualization
-│   └── ui/                        # User interface
-├── data/                         # Data storage
-│   ├── docs/                     # Research papers
-│   ├── indices/                   # Search indices
-│   └── cache/                     # Application cache
-└── output/                        # Generated outputs
-```
 
-## 🔧 How to Use Research Compass
+### Graph Visualization Empty├── launcher.py                    # Main application launcher
+
+Upload documents first with "Build Knowledge Graph" enabled├── requirements.txt               # Python dependencies
+
+├── config/                      # Configuration files
+
+### Python Version│   ├── academic_config.yaml
+
+Use Python 3.11 (NOT 3.13) for compatibility│   └── settings.py
+
+├── src/graphrag/                 # Core GNN system
+
+### LLM Connection│   ├── core/                     # System core
+
+**Ollama**: `ollama serve` then `ollama pull llama3.2`│   ├── analytics/                 # Analytics modules
+
+**OpenRouter/OpenAI**: Verify API key and credits│   ├── ml/                        # Machine learning
+
+│   ├── visualization/             # Graph visualization
+
+## License│   └── ui/                        # User interface
+
+├── data/                         # Data storage
+
+MIT License - see [LICENSE](LICENSE) file for details.│   ├── docs/                     # Research papers
+
+│   ├── indices/                   # Search indices
+
+## Acknowledgments│   └── cache/                     # Application cache
+
+└── output/                        # Generated outputs
+
+- Neo4j for graph database technology```
+
+- PyTorch Geometric for GNN framework  
+
+- spaCy for NLP capabilities## 🔧 How to Use Research Compass
+
+- Gradio for UI framework
 
 ### Step 1: Launch the Application
 

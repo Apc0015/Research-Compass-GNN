@@ -25,10 +25,14 @@ import sys
 import argparse
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
+# Load environment variables from .env file
+load_dotenv(override=True)
 
 
 def setup_dev_mode():
