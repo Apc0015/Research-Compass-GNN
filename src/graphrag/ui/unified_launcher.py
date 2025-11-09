@@ -3095,7 +3095,7 @@ Restart may be required for changes to take effect."""
                                                 if hasattr(graph_manager, 'close'):
                                                     try:
                                                         graph_manager.close()
-                                                    except:
+                                                    except Exception:
                                                         pass
 
                                                 # Update connection parameters

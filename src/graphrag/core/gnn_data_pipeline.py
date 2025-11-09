@@ -53,7 +53,8 @@ class GraphBuilder:
             'edges': {},
             'node_types': [],
             'edge_types': [],
-            'features': {}
+            'features': {},
+            'edge_features': {}
         }
         
         # Process nodes

@@ -5,9 +5,12 @@ Manages training, prediction, and model lifecycle
 """
 
 import torch
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any, Callable
 from pathlib import Path
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .graph_converter import Neo4jToTorchGeometric
 from .node_classifier import PaperClassifier, train_node_classifier, evaluate_classifier
@@ -679,7 +682,10 @@ if __name__ == "__main__":
 
     neo4j_uri = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")
     neo4j_user = os.getenv("NEO4J_USER", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD", "password")
+    neo4j_password = os.getenv("NEO4J_PASSWORD")
+
+    if not neo4j_password:
+        raise ValueError("NEO4J_PASSWORD environment variable must be set")
 
     print("=" * 80)
     print("GNN Manager Test")
