@@ -159,11 +159,12 @@ def build_default_container(config: Dict[str, Any] | None = None) -> Container:
     
     c.register_factory('llm_manager', _llm_manager_factory)
     
-    # GNNManager factory
+    # GNNManager factory (with lazy loading for faster startup)
     def _gnn_manager_factory():
-        from ..ml.gnn_manager import GNNManager
-        return GNNManager(neo4j_uri, neo4j_user, neo4j_password)
-    
+        from ..ml.lazy_gnn_manager import LazyGNNManager
+        # Lazy loading: models loaded only when first accessed (faster startup)
+        return LazyGNNManager(neo4j_uri, neo4j_user, neo4j_password, auto_initialize=False)
+
     c.register_factory('gnn_manager', _gnn_manager_factory)
     
     # TemporalGraphAnalytics factory

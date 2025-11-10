@@ -24,7 +24,8 @@ except Exception:
     AdvancedDocumentIndexer = None
 
 try:
-    from src.graphrag.ml.gnn_manager import GNNManager
+    # Use lazy GNN manager for faster startup (Phase 3 optimization)
+    from src.graphrag.ml.lazy_gnn_manager import LazyGNNManager as GNNManager
 except Exception:
     GNNManager = None
 
