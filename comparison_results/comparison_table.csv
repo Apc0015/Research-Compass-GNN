@@ -1,0 +1,4 @@
+Model,Task,Parameters,Test Accuracy,Training Time (s),Inference Time (ms),Memory Usage (MB)
+GCN,Node Classification,"66,437",0.8750,0.41,1.80,11.19
+GAT,Link Prediction,"297,089",0.3650,2.13,7.28,210.54
+Transformer,Embedding,"2,036,096",0.0163,1.30,5.13,169.41
