@@ -44,7 +44,7 @@ class OllamaProvider(LLMProvider):
         self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate using Ollama API."""
+        """Generate using Ollama API with robust error handling."""
         url = f"{self.base_url}/api/generate"
 
         # Combine system and user prompts for Ollama
@@ -60,13 +60,24 @@ class OllamaProvider(LLMProvider):
             }
         }
 
-        response = requests.post(url, json=payload, timeout=self.timeout)
+        try:
+            response = requests.post(url, json=payload, timeout=self.timeout)
 
-        if response.status_code == 200:
-            result = response.json()
-            return result.get("response", "No response generated")
-        else:
-            raise Exception(f"Ollama API error: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    return result.get("response", "No response generated")
+                except ValueError as e:
+                    raise Exception(f"Ollama returned invalid JSON: {e}")
+            else:
+                raise Exception(f"Ollama API error: {response.status_code} - {response.text}")
+
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"Cannot connect to Ollama at {self.base_url}. Is it running? (Try: ollama serve)")
+        except requests.exceptions.Timeout:
+            raise Exception(f"Ollama request timed out after {self.timeout}s. Try increasing timeout or check if model is loaded.")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Ollama request failed: {str(e)}")
 
     def test_connection(self) -> Tuple[bool, str]:
         """Test Ollama connection."""
@@ -144,7 +155,7 @@ class LMStudioProvider(LLMProvider):
         self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate using LM Studio API (OpenAI-compatible)."""
+        """Generate using LM Studio API (OpenAI-compatible) with robust error handling."""
         url = f"{self.base_url}/v1/chat/completions"
 
         payload = {
@@ -157,13 +168,34 @@ class LMStudioProvider(LLMProvider):
             "max_tokens": self.max_tokens
         }
 
-        response = requests.post(url, json=payload, timeout=self.timeout)
+        try:
+            response = requests.post(url, json=payload, timeout=self.timeout)
 
-        if response.status_code == 200:
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-        else:
-            raise Exception(f"LM Studio API error: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    # Safe dictionary access with .get() fallbacks
+                    choices = result.get("choices", [])
+                    if choices and len(choices) > 0:
+                        message = choices[0].get("message", {})
+                        content = message.get("content", "")
+                        if content:
+                            return content
+                        else:
+                            raise Exception("LM Studio returned empty response")
+                    else:
+                        raise Exception("LM Studio returned no choices in response")
+                except ValueError as e:
+                    raise Exception(f"LM Studio returned invalid JSON: {e}")
+            else:
+                raise Exception(f"LM Studio API error: {response.status_code} - {response.text}")
+
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"Cannot connect to LM Studio at {self.base_url}. Is the server running?")
+        except requests.exceptions.Timeout:
+            raise Exception(f"LM Studio request timed out after {self.timeout}s. Try increasing timeout.")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"LM Studio request failed: {str(e)}")
 
     def test_connection(self) -> Tuple[bool, str]:
         """Test LM Studio connection."""
@@ -242,7 +274,7 @@ class OpenRouterProvider(LLMProvider):
             self._auto_detect_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate using OpenRouter API."""
+        """Generate using OpenRouter API with robust error handling."""
         url = f"{self.base_url}/v1/chat/completions"
 
         headers = {
@@ -262,13 +294,38 @@ class OpenRouterProvider(LLMProvider):
             "max_tokens": self.max_tokens
         }
 
-        response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
 
-        if response.status_code == 200:
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-        else:
-            raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    # Safe dictionary access with .get() fallbacks
+                    choices = result.get("choices", [])
+                    if choices and len(choices) > 0:
+                        message = choices[0].get("message", {})
+                        content = message.get("content", "")
+                        if content:
+                            return content
+                        else:
+                            raise Exception("OpenRouter returned empty response")
+                    else:
+                        raise Exception("OpenRouter returned no choices in response")
+                except ValueError as e:
+                    raise Exception(f"OpenRouter returned invalid JSON: {e}")
+            elif response.status_code == 401:
+                raise Exception("OpenRouter authentication failed. Check your API key.")
+            elif response.status_code == 429:
+                raise Exception("OpenRouter rate limit exceeded. Please try again later.")
+            else:
+                raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
+
+        except requests.exceptions.ConnectionError:
+            raise Exception("Cannot connect to OpenRouter. Check your internet connection.")
+        except requests.exceptions.Timeout:
+            raise Exception(f"OpenRouter request timed out after {self.timeout}s. Try increasing timeout.")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"OpenRouter request failed: {str(e)}")
 
     def test_connection(self) -> Tuple[bool, str]:
         """Test OpenRouter connection."""
@@ -393,7 +450,7 @@ class OpenAIProvider(LLMProvider):
         self._validate_model()
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate using OpenAI API."""
+        """Generate using OpenAI API with robust error handling."""
         url = f"{self.base_url}/v1/chat/completions"
 
         headers = {
@@ -411,13 +468,45 @@ class OpenAIProvider(LLMProvider):
             "max_tokens": self.max_tokens
         }
 
-        response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
 
-        if response.status_code == 200:
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-        else:
-            raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    # Safe dictionary access with .get() fallbacks
+                    choices = result.get("choices", [])
+                    if choices and len(choices) > 0:
+                        message = choices[0].get("message", {})
+                        content = message.get("content", "")
+                        if content:
+                            return content
+                        else:
+                            raise Exception("OpenAI returned empty response")
+                    else:
+                        raise Exception("OpenAI returned no choices in response")
+                except ValueError as e:
+                    raise Exception(f"OpenAI returned invalid JSON: {e}")
+            elif response.status_code == 401:
+                raise Exception("OpenAI authentication failed. Check your API key.")
+            elif response.status_code == 429:
+                raise Exception("OpenAI rate limit exceeded. Please try again later or upgrade your plan.")
+            elif response.status_code == 400:
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("error", {}).get("message", response.text)
+                    raise Exception(f"OpenAI bad request: {error_msg}")
+                except ValueError:
+                    raise Exception(f"OpenAI bad request: {response.text}")
+            else:
+                raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+
+        except requests.exceptions.ConnectionError:
+            raise Exception("Cannot connect to OpenAI. Check your internet connection.")
+        except requests.exceptions.Timeout:
+            raise Exception(f"OpenAI request timed out after {self.timeout}s. Try increasing timeout.")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"OpenAI request failed: {str(e)}")
 
     def test_connection(self) -> Tuple[bool, str]:
         """Test OpenAI connection."""
