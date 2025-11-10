@@ -41,7 +41,7 @@ venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-*.ipynb
+# *.ipynb  # REMOVED: We want to include notebooks for academic project
 
 # pyenv
 .python-version
