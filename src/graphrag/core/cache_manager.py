@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Optional, Dict, Callable
 from datetime import datetime, timedelta
 from functools import wraps
+from collections import OrderedDict
 import threading
 
 logger = logging.getLogger(__name__)
@@ -53,9 +54,10 @@ class CacheManager:
         
         self.max_memory_items = max_memory_items
         self.default_ttl = default_ttl_seconds
-        
-        # Memory cache: {key: (value, expiry_timestamp)}
-        self._memory_cache: Dict[str, tuple] = {}
+
+        # Memory cache with LRU eviction: OrderedDict maintains insertion order
+        # {key: (value, expiry_timestamp)}
+        self._memory_cache: OrderedDict[str, tuple] = OrderedDict()
         self._cache_lock = threading.Lock()
         
         # Cache statistics
@@ -111,16 +113,17 @@ class CacheManager:
         return datetime.now().timestamp() > expiry_timestamp
     
     def _evict_oldest_memory_entry(self):
-        """Evict oldest entry from memory cache if at capacity."""
+        """
+        Evict least recently used entry from memory cache if at capacity.
+
+        Optimization: Uses OrderedDict for proper LRU eviction policy.
+        Prevents unbounded memory growth.
+        """
         if len(self._memory_cache) >= self.max_memory_items:
-            # Find oldest entry (earliest expiry)
-            oldest_key = min(
-                self._memory_cache.keys(),
-                key=lambda k: self._memory_cache[k][1]
-            )
-            del self._memory_cache[oldest_key]
+            # OrderedDict: remove first (oldest) item (LRU)
+            oldest_key, _ = self._memory_cache.popitem(last=False)
             self.stats['evictions'] += 1
-            logger.debug(f"Evicted memory cache entry: {oldest_key[:16]}...")
+            logger.debug(f"Evicted LRU cache entry: {oldest_key[:16]}...")
     
     def get(
         self,
@@ -148,6 +151,8 @@ class CacheManager:
             if key in self._memory_cache:
                 value, expiry = self._memory_cache[key]
                 if not self._is_expired(expiry):
+                    # Move to end (most recently used) for proper LRU
+                    self._memory_cache.move_to_end(key)
                     self.stats['hits'] += 1
                     self.stats['memory_hits'] += 1
                     logger.debug(f"Memory cache hit: {namespace} ({key[:16]}...)")
