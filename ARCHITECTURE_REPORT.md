@@ -1064,10 +1064,14 @@ def recommend_papers(
 │ STAGE 5: VECTOR INDEXING                                    │
 ├─────────────────────────────────────────────────────────────┤
 │ Embedding Model: all-MiniLM-L6-v2 (384-dim)                 │
+│ Vector Database Options:                                     │
+│   - FAISS (default, local, fast)                            │
+│   - Pinecone (cloud or local, scalable)                     │
+│   - Chroma (local, persistent)                              │
 │ Process:                                                     │
 │   - Generate embeddings for paper titles + abstracts        │
-│   - Build FAISS index for similarity search                 │
-│   - Store in Chroma vector database                         │
+│   - Build vector index for similarity search                │
+│   - Store in configured vector database                     │
 │ Output: Vector indices for fast retrieval                   │
 └────────────────────────┬────────────────────────────────────┘
                          ↓
@@ -1139,15 +1143,18 @@ data/
 │   ├── *.docx
 │   └── *.txt
 │
-├── indices/               # FAISS indices
-│   ├── paper_embeddings.index
+├── indices/               # Vector search indices
+│   ├── paper_embeddings.index  # FAISS (local)
 │   └── metadata.json
 │
 ├── cache/                 # LLM response cache
 │   └── responses_*.pkl
 │
-└── chroma/                # Vector database
-    └── collections/
+├── chroma/                # Chroma vector database (local)
+│   └── collections/
+│
+└── pinecone/              # Pinecone local data (if using Pinecone Lite)
+    └── indexes/
 
 models/gnn/
 ├── node_classifier.pt     # Trained classifier
@@ -1266,6 +1273,14 @@ database:
   pool_size: 100
   timeout: 30
 
+  # Pinecone Configuration
+  pinecone_api_key: ""  # Set for Pinecone Cloud
+  pinecone_environment: "gcp-starter"  # or 'us-east-1-aws', etc.
+  pinecone_index_name: "research-compass"
+  pinecone_dimension: 384
+  pinecone_metric: "cosine"  # cosine, euclidean, or dotproduct
+  pinecone_use_local: false  # true for Pinecone Lite (local mode)
+
 llm:
   provider: ollama  # ollama, lmstudio, openrouter, openai
   model: llama3.2
@@ -1279,6 +1294,11 @@ embeddings:
   dimension: 384
   provider: huggingface
   batch_size: 32
+
+vector_db:
+  provider: faiss  # faiss, pinecone, or chroma
+  use_pinecone: false  # Set to true to use Pinecone
+  use_faiss: true  # Set to true to use FAISS (default)
 
 processing:
   chunk_size: 500
@@ -1363,6 +1383,12 @@ OLLAMA_BASE_URL=http://localhost:11434
 OPENAI_API_KEY=sk-...
 OPENROUTER_API_KEY=sk-or-...
 
+# Pinecone (Vector Database)
+PINECONE_API_KEY=pc-...  # For Pinecone Cloud
+PINECONE_ENVIRONMENT=gcp-starter  # or us-east-1-aws, etc.
+PINECONE_INDEX_NAME=research-compass
+PINECONE_USE_LOCAL=false  # Set to true for Pinecone Lite
+
 # Paths
 DATA_DIR=data
 MODELS_DIR=models
@@ -1372,6 +1398,199 @@ OUTPUT_DIR=output
 LOG_LEVEL=INFO
 DEBUG=false
 ```
+
+---
+
+## 8.4 Vector Database Options
+
+Research Compass supports multiple vector database backends for embedding storage and similarity search. The system provides a unified interface through the `UnifiedVectorSearch` class that automatically selects the appropriate backend based on configuration.
+
+### Supported Vector Databases
+
+#### 1. FAISS (Default - Local)
+
+**File:** `src/graphrag/core/vector_search.py`
+
+**Type:** Local, in-memory vector search
+**Best For:** Development, small to medium datasets, no external dependencies
+
+**Features:**
+- Fast similarity search using Facebook AI's FAISS library
+- Runs entirely locally (no API costs)
+- Support for HuggingFace and Ollama embedding models
+- Save/load index to disk for persistence
+
+**Configuration:**
+```yaml
+vector_db:
+  provider: faiss
+  use_faiss: true
+```
+
+**Pros:**
+- ✅ Free and open-source
+- ✅ Very fast for moderate-scale datasets
+- ✅ No external dependencies
+- ✅ Full privacy (all data local)
+
+**Cons:**
+- ❌ Limited scalability (single machine)
+- ❌ No built-in persistence (manual save/load)
+- ❌ Memory-intensive for large datasets
+
+#### 2. Pinecone (Cloud & Local)
+
+**File:** `src/graphrag/core/pinecone_provider.py`
+
+**Type:** Managed vector database (cloud) or Pinecone Lite (local)
+**Best For:** Production deployments, large-scale datasets, cloud applications
+
+**Features:**
+- Fully managed cloud vector database
+- Pinecone Lite for local development (no API key required)
+- Automatic scaling and high availability (cloud)
+- Built-in metadata filtering
+- Real-time index updates
+
+**Cloud Configuration:**
+```yaml
+database:
+  pinecone_api_key: "your-api-key"
+  pinecone_environment: "gcp-starter"
+  pinecone_index_name: "research-compass"
+  pinecone_dimension: 384
+  pinecone_metric: "cosine"
+  pinecone_use_local: false
+
+vector_db:
+  provider: pinecone
+  use_pinecone: true
+```
+
+**Local Configuration (Pinecone Lite):**
+```yaml
+database:
+  pinecone_use_local: true  # No API key required
+  pinecone_index_name: "research-compass"
+  pinecone_dimension: 384
+  pinecone_metric: "cosine"
+
+vector_db:
+  provider: pinecone
+  use_pinecone: true
+```
+
+**Pros:**
+- ✅ Highly scalable (millions to billions of vectors)
+- ✅ Fully managed (cloud) - no infrastructure to maintain
+- ✅ Fast similarity search with metadata filtering
+- ✅ High availability and disaster recovery (cloud)
+- ✅ Free local mode (Pinecone Lite) for development
+
+**Cons:**
+- ❌ API costs for cloud deployment
+- ❌ Requires internet connection for cloud mode
+- ❌ Learning curve for advanced features
+
+**Supported Metrics:**
+- `cosine` - Cosine similarity (default, best for normalized embeddings)
+- `euclidean` - Euclidean distance (L2 norm)
+- `dotproduct` - Dot product similarity
+
+**Use Cases:**
+- **Production deployments** - Reliable, scalable, managed service
+- **Large datasets** - Millions of research papers
+- **Multi-user applications** - Cloud-based access
+- **Development** - Pinecone Lite for local testing
+
+#### 3. Chroma (Local - Planned)
+
+**Type:** Local, persistent vector database
+**Status:** Planned for future implementation
+
+**Features:**
+- Local-first vector database
+- Built-in persistence
+- Lightweight and easy to use
+
+### Unified Vector Search Interface
+
+The `UnifiedVectorSearch` class provides a consistent API regardless of the backend:
+
+**File:** `src/graphrag/core/unified_vector_search.py`
+
+**Key Methods:**
+```python
+class UnifiedVectorSearch:
+    def add_texts(texts: List[str], metadata: List[Dict] = None) -> List[str]
+    def search(query: str, top_k: int = 5, filter: Dict = None) -> List[Dict]
+    def get_stats() -> Dict[str, Any]
+    def test_connection() -> Tuple[bool, str]
+    def clear() -> bool
+    def close() -> None
+```
+
+**Usage Example:**
+```python
+from src.graphrag.core.unified_vector_search import UnifiedVectorSearch
+
+# Initialize (automatically selects backend from config)
+vector_search = UnifiedVectorSearch()
+
+# Add documents
+texts = ["Paper about graph neural networks", "Paper about transformers"]
+metadata = [{"title": "GNN Paper", "year": 2023}, {"title": "Transformer Paper", "year": 2024}]
+ids = vector_search.add_texts(texts, metadata)
+
+# Search
+results = vector_search.search("graph neural networks", top_k=5)
+
+# With metadata filter (Pinecone only)
+results = vector_search.search(
+    "graph neural networks",
+    top_k=5,
+    filter={"year": {"$gte": 2023}}
+)
+
+# Get statistics
+stats = vector_search.get_stats()
+print(f"Total vectors: {stats['total_vectors']}")
+
+# Close connection
+vector_search.close()
+```
+
+### Choosing the Right Vector Database
+
+| Factor | FAISS | Pinecone Cloud | Pinecone Lite |
+|--------|-------|----------------|---------------|
+| **Cost** | Free | Paid (free tier available) | Free |
+| **Scale** | < 1M vectors | Billions of vectors | < 1M vectors |
+| **Deployment** | Local | Cloud | Local |
+| **Setup** | Easy | Moderate | Easy |
+| **Persistence** | Manual | Automatic | Automatic |
+| **Performance** | Very Fast | Fast | Fast |
+| **Metadata Filtering** | Limited | Advanced | Advanced |
+| **Best For** | Development, Small Projects | Production, Large Scale | Development, Testing |
+
+### Deployment Recommendations
+
+**For Development:**
+- Use FAISS (default) or Pinecone Lite
+- No API keys required
+- Fast iteration
+
+**For Small Production (<100K papers):**
+- Use FAISS with regular backups
+- Simple, cost-effective
+
+**For Medium Production (100K-1M papers):**
+- Use Pinecone Lite or Pinecone Cloud (free tier)
+- Better persistence and reliability
+
+**For Large Production (>1M papers):**
+- Use Pinecone Cloud (paid tier)
+- Fully managed, scalable, highly available
 
 ---
 
@@ -1776,7 +1995,9 @@ volumes:
 | `sentence-transformers` | 2.2+ | Text embeddings |
 | `transformers` | 4.30+ | NLP models |
 | `scikit-learn` | 1.3+ | ML utilities and metrics |
-| `faiss-cpu` | 1.7+ | Vector similarity search |
+| `faiss-cpu` | 1.7+ | Vector similarity search (local) |
+| `pinecone-client` | 3.0+ | Pinecone vector database (cloud & local) |
+| `chromadb` | 0.4+ | Chroma vector database (local) |
 
 ### 12.3 NLP and Text Processing
 
