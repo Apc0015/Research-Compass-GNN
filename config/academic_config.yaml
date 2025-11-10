@@ -11,6 +11,14 @@ database:
   connection_timeout: 30.0
   max_connection_lifetime: 3600.0
 
+  # Pinecone Configuration
+  pinecone_api_key: ""  # Set your Pinecone API key here or via PINECONE_API_KEY env var
+  pinecone_environment: "gcp-starter"  # or 'us-east-1-aws', 'us-west-2-aws', etc.
+  pinecone_index_name: "research-compass"
+  pinecone_dimension: 384
+  pinecone_metric: "cosine"  # cosine, euclidean, or dotproduct
+  pinecone_use_local: false  # Set to true for Pinecone Lite (local mode)
+
 # LLM Configuration
 llm:
   provider: "ollama"
@@ -33,6 +41,12 @@ embedding:
   base_url: "http://localhost:11434"
   dimension: 384
   batch_size: 32
+
+# Vector Database Configuration
+vector_db:
+  provider: "faiss"  # faiss, pinecone, or chroma
+  use_pinecone: false  # Set to true to use Pinecone
+  use_faiss: true  # Set to true to use FAISS (default)
 
 # Processing Configuration
 processing:

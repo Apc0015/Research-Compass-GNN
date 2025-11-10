@@ -28,6 +28,14 @@ class DatabaseConfig:
     connection_timeout: float = 30.0
     max_connection_lifetime: float = 3600.0
 
+    # Pinecone configuration
+    pinecone_api_key: Optional[str] = None
+    pinecone_environment: str = "gcp-starter"  # or 'us-east-1-aws', etc.
+    pinecone_index_name: str = "research-compass"
+    pinecone_dimension: int = 384
+    pinecone_metric: str = "cosine"  # cosine, euclidean, dotproduct
+    pinecone_use_local: bool = False  # True for Pinecone Lite (local mode)
+
 
 @dataclass
 class LLMConfig:
@@ -58,6 +66,14 @@ class EmbeddingConfig:
     base_url: str = "http://localhost:11434"
     dimension: int = 384
     batch_size: int = 32
+
+
+@dataclass
+class VectorDatabaseConfig:
+    """Vector database configuration settings."""
+    provider: str = "faiss"  # faiss, pinecone, chroma
+    use_pinecone: bool = False  # Shortcut for Pinecone
+    use_faiss: bool = True  # Shortcut for FAISS (default)
 
 
 @dataclass
@@ -188,13 +204,14 @@ class Config:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
+    vector_db: VectorDatabaseConfig = field(default_factory=VectorDatabaseConfig)
     processing: ProcessingConfig = field(default_factory=ProcessingConfig)
     academic: AcademicConfig = field(default_factory=AcademicConfig)
     ui: UIConfig = field(default_factory=UIConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
     system: SystemConfig = field(default_factory=SystemConfig)
-    
+
     # Additional configuration sections
     custom: Dict[str, Any] = field(default_factory=dict)
 
@@ -258,6 +275,16 @@ class ConfigManager:
             env_config.setdefault("database", {})["user"] = os.getenv("NEO4J_USER")
         if os.getenv("NEO4J_PASSWORD"):
             env_config.setdefault("database", {})["password"] = os.getenv("NEO4J_PASSWORD")
+
+        # Pinecone configuration
+        if os.getenv("PINECONE_API_KEY"):
+            env_config.setdefault("database", {})["pinecone_api_key"] = os.getenv("PINECONE_API_KEY")
+        if os.getenv("PINECONE_ENVIRONMENT"):
+            env_config.setdefault("database", {})["pinecone_environment"] = os.getenv("PINECONE_ENVIRONMENT")
+        if os.getenv("PINECONE_INDEX_NAME"):
+            env_config.setdefault("database", {})["pinecone_index_name"] = os.getenv("PINECONE_INDEX_NAME")
+        if os.getenv("PINECONE_USE_LOCAL"):
+            env_config.setdefault("database", {})["pinecone_use_local"] = os.getenv("PINECONE_USE_LOCAL").lower() == "true"
         
         # LLM configuration
         if os.getenv("LLM_PROVIDER"):
@@ -378,7 +405,12 @@ class ConfigManager:
             for key, value in config_dict["embedding"].items():
                 if hasattr(config.embedding, key):
                     setattr(config.embedding, key, value)
-        
+
+        if "vector_db" in config_dict:
+            for key, value in config_dict["vector_db"].items():
+                if hasattr(config.vector_db, key):
+                    setattr(config.vector_db, key, value)
+
         if "processing" in config_dict:
             for key, value in config_dict["processing"].items():
                 if hasattr(config.processing, key):
