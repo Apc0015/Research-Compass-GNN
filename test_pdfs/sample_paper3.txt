@@ -1,0 +1,8 @@
+Sample Research Paper 3: Graph Neural Networks
+
+We present a comprehensive study of GNN architectures for node classification.
+Applications include citation networks and social graphs.
+
+References:
+[1] Wang and Zhang, 2022
+[2] Johnson and Lee, 2019
