@@ -1,0 +1,284 @@
+# Research Compass GNN - Configuration File
+# Centralized configuration for models, training, paths, and analysis
+
+# ============================================================================
+# Model Configurations
+# ============================================================================
+models:
+  # GCN (Graph Convolutional Network)
+  gcn:
+    hidden_dim: 128
+    num_layers: 3
+    dropout: 0.5
+    task: "classification"
+
+  # GAT (Graph Attention Network)
+  gat:
+    hidden_dim: 128
+    num_heads: 8
+    num_layers: 2
+    dropout: 0.3
+    task: "classification"
+
+  # Graph Transformer
+  graph_transformer:
+    hidden_dim: 128
+    num_heads: 8
+    num_layers: 3
+    dropout: 0.3
+    task: "classification"
+
+  # HAN (Heterogeneous Attention Network)
+  han:
+    hidden_dim: 128
+    num_heads: 8
+    num_layers: 2
+    dropout: 0.3
+    task: "classification"
+    num_venues: 15
+    num_authors_per_paper: [2, 4]
+
+  # R-GCN (Relational GCN)
+  rgcn:
+    hidden_dim: 128
+    num_bases: 30
+    num_relations: 4
+    num_layers: 2
+    dropout: 0.5
+    task: "classification"
+
+# ============================================================================
+# Training Configuration
+# ============================================================================
+training:
+  # General training parameters
+  epochs: 100
+  learning_rate: 0.01
+  weight_decay: 5e-4
+  patience: 10
+
+  # Learning rate scheduler
+  scheduler:
+    enabled: true
+    mode: "min"
+    factor: 0.5
+    patience: 10
+    min_lr: 1e-5
+
+  # Gradient clipping
+  gradient_clipping:
+    enabled: true
+    max_norm: 1.0
+
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 15
+    min_delta: 0.001
+
+# ============================================================================
+# Paths Configuration
+# ============================================================================
+paths:
+  # Data directories
+  data: "./data"
+  raw_data: "./data/raw"
+  processed_data: "./data/processed"
+
+  # Model and checkpoint directories
+  models: "./checkpoints"
+  best_models: "./checkpoints/best"
+
+  # Results and logging
+  results: "./results"
+  logs: "./logs"
+  figures: "./results/figures"
+  reports: "./results/reports"
+
+  # Temporary files
+  temp: "./tmp"
+
+# ============================================================================
+# Dataset Configuration
+# ============================================================================
+datasets:
+  # Default dataset settings
+  default:
+    name: "Cora"
+    root: "./data/raw"
+    train_split: 0.6
+    val_split: 0.2
+    test_split: 0.2
+
+  # Citation network generation
+  synthetic:
+    num_papers: 100
+    num_topics: 7
+    avg_citations: 3
+    temporal: true
+    feature_dim: 384
+
+# ============================================================================
+# Evaluation Configuration
+# ============================================================================
+evaluation:
+  # Metrics to compute
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1"
+    - "confusion_matrix"
+
+  # Evaluation frequency
+  eval_every_n_epochs: 1
+
+  # Test evaluation
+  test_at_end: true
+
+  # Visualization
+  save_plots: true
+  plot_format: "png"
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+
+  # Log file configuration
+  log_to_file: true
+  log_file: "logs/training.log"
+
+  # Console logging
+  log_to_console: true
+
+  # Format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+
+  # Wandb integration (optional)
+  wandb:
+    enabled: false
+    project: "research-compass-gnn"
+    entity: null
+
+# ============================================================================
+# Checkpoint Configuration
+# ============================================================================
+checkpointing:
+  # Checkpointing enabled
+  enabled: true
+
+  # Save frequency
+  save_every_n_epochs: 10
+
+  # Keep only best N checkpoints
+  keep_top_k: 3
+
+  # Monitor metric for best model
+  monitor: "val_acc"
+  mode: "max"  # 'max' for accuracy, 'min' for loss
+
+  # Save optimizer state
+  save_optimizer: true
+
+# ============================================================================
+# Visualization Configuration
+# ============================================================================
+visualization:
+  # Attention visualization
+  attention:
+    enabled: true
+    num_nodes_to_visualize: 20
+    colormap: "YlOrRd"
+
+  # Graph visualization
+  graph:
+    enabled: true
+    layout: "spring"
+    node_size: 300
+    edge_width: 1.0
+
+  # Training curves
+  training_curves:
+    enabled: true
+    plot_every_n_epochs: 1
+    metrics:
+      - "train_loss"
+      - "train_acc"
+      - "val_acc"
+
+# ============================================================================
+# Analysis Configuration
+# ============================================================================
+analysis:
+  # Temporal analysis
+  temporal:
+    enabled: true
+    lookback_years: 3
+    min_papers_for_emerging: 5
+
+  # Ablation study
+  ablation:
+    enabled: false
+    components:
+      - "attention"
+      - "normalization"
+      - "residual_connections"
+
+  # Baseline comparison
+  baselines:
+    enabled: true
+    models:
+      - "random"
+      - "logistic"
+      - "rf"
+      - "mlp"
+
+# ============================================================================
+# Device Configuration
+# ============================================================================
+device:
+  # Auto-detect CUDA availability
+  auto_detect: true
+
+  # Force specific device (overrides auto_detect if set)
+  # Options: "cpu", "cuda", "cuda:0", "cuda:1", etc.
+  force_device: null
+
+  # Mixed precision training
+  mixed_precision: false
+
+# ============================================================================
+# UI Configuration
+# ============================================================================
+ui:
+  # Gradio server settings
+  server:
+    port: 7860
+    share: false
+    debug: false
+
+  # UI theme
+  theme: "default"
+
+  # Default values
+  defaults:
+    model_type: "GCN"
+    epochs: 50
+    learning_rate: 0.01
+
+# ============================================================================
+# Reproducibility
+# ============================================================================
+reproducibility:
+  # Random seed
+  seed: 42
+
+  # Deterministic behavior
+  deterministic: true
+
+  # Benchmark mode (may reduce reproducibility but improve performance)
+  benchmark: false

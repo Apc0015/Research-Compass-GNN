@@ -7,7 +7,8 @@ from .dataset_utils import (
     load_citation_dataset,
     get_dataset_statistics,
     print_dataset_info,
-    create_link_prediction_split
+    create_link_prediction_split,
+    move_to_device
 )
 
 from .heterogeneous_graph_builder import (
@@ -27,6 +28,7 @@ __all__ = [
     'get_dataset_statistics',
     'print_dataset_info',
     'create_link_prediction_split',
+    'move_to_device',
     'HeterogeneousGraphBuilder',
     'convert_to_heterogeneous',
     'CitationTypeClassifier',

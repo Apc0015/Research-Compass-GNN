@@ -105,7 +105,17 @@ class CitationTypeClassifier:
             )
             edge_types.append(edge_type)
 
-        return torch.tensor(edge_types, dtype=torch.long)
+        edge_types_tensor = torch.tensor(edge_types, dtype=torch.long)
+
+        # Validation: Ensure all edge types are in valid range [0-3]
+        if edge_types_tensor.numel() > 0:
+            min_type = edge_types_tensor.min().item()
+            max_type = edge_types_tensor.max().item()
+            assert min_type >= 0 and max_type <= 3, \
+                f"Invalid edge types: range [{min_type}, {max_type}], expected [0, 3]"
+            print(f"✅ Edge type validation passed: {self.num_edges} edges classified into types [0-3]")
+
+        return edge_types_tensor
 
     def _apply_rules(
         self,

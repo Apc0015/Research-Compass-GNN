@@ -476,48 +476,77 @@ class HANTrainer(BaseTrainer):
         Returns:
             Dictionary with training metrics
         """
-        self.model.train()
-        self.optimizer.zero_grad()
+        try:
+            self.model.train()
+            self.optimizer.zero_grad()
 
-        start_time = time.time()
+            start_time = time.time()
 
-        # Move data to device
-        x_dict = {k: v.to(self.device) for k, v in hetero_data.x_dict.items()}
-        edge_index_dict = {
-            k: v.to(self.device) for k, v in hetero_data.edge_index_dict.items()
-        }
+            # Validate hetero_data structure
+            if not hasattr(hetero_data, 'x_dict'):
+                raise ValueError("hetero_data must have x_dict attribute")
+            if not hasattr(hetero_data, 'edge_index_dict'):
+                raise ValueError("hetero_data must have edge_index_dict attribute")
 
-        # Forward pass
-        out_dict = self.model(x_dict, edge_index_dict)
+            # Validate target node type exists
+            if self.target_node_type not in hetero_data.node_types:
+                raise ValueError(f"Target node type '{self.target_node_type}' not found. "
+                               f"Available: {hetero_data.node_types}")
 
-        # Compute loss (only on target node type with train mask)
-        out = out_dict[self.target_node_type]
-        y = hetero_data[self.target_node_type].y.to(self.device)
-        train_mask = hetero_data[self.target_node_type].train_mask.to(self.device)
+            # Validate masks exist
+            if not hasattr(hetero_data[self.target_node_type], 'train_mask'):
+                raise ValueError(f"train_mask not found for {self.target_node_type}")
 
-        if loss_fn is not None:
-            loss = loss_fn(out[train_mask], y[train_mask])
-        else:
-            loss = F.cross_entropy(out[train_mask], y[train_mask])
+            # Move data to device with error handling
+            try:
+                x_dict = {k: v.to(self.device) for k, v in hetero_data.x_dict.items()}
+                edge_index_dict = {
+                    k: v.to(self.device) for k, v in hetero_data.edge_index_dict.items()
+                }
+            except RuntimeError as e:
+                raise RuntimeError(f"Error moving data to device {self.device}: {e}")
 
-        # Backward pass
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-        self.optimizer.step()
+            # Forward pass
+            out_dict = self.model(x_dict, edge_index_dict)
 
-        epoch_time = time.time() - start_time
+            # Validate output
+            if self.target_node_type not in out_dict:
+                raise ValueError(f"Model output missing {self.target_node_type}")
 
-        # Compute training accuracy
-        with torch.no_grad():
-            pred = out[train_mask].argmax(dim=1)
-            train_acc = (pred == y[train_mask]).float().mean().item()
+            # Compute loss (only on target node type with train mask)
+            out = out_dict[self.target_node_type]
+            y = hetero_data[self.target_node_type].y.to(self.device)
+            train_mask = hetero_data[self.target_node_type].train_mask.to(self.device)
 
-        return {
-            'loss': loss.item(),
-            'accuracy': train_acc,
-            'time': epoch_time,
-            'lr': self.get_current_lr()
-        }
+            if loss_fn is not None:
+                loss = loss_fn(out[train_mask], y[train_mask])
+            else:
+                loss = F.cross_entropy(out[train_mask], y[train_mask])
+
+            # Backward pass
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            self.optimizer.step()
+
+            epoch_time = time.time() - start_time
+
+            # Compute training accuracy
+            with torch.no_grad():
+                pred = out[train_mask].argmax(dim=1)
+                train_acc = (pred == y[train_mask]).float().mean().item()
+
+            return {
+                'loss': loss.item(),
+                'accuracy': train_acc,
+                'time': epoch_time,
+                'lr': self.get_current_lr()
+            }
+
+        except Exception as e:
+            print(f"❌ Error in train_epoch: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
     def validate(
         self,

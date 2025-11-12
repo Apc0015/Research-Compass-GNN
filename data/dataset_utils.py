@@ -346,3 +346,60 @@ def create_link_prediction_split(
     neg_edge_index = torch.tensor(neg_edges, dtype=torch.long).t()
 
     return train_edge_index, val_edge_index, test_edge_index, neg_edge_index
+
+
+def move_to_device(data, device):
+    """
+    Safely move PyG Data or HeteroData to device
+
+    Handles both regular Data and HeteroData objects, moving all tensors
+    (features, labels, masks, edge indices) to the specified device.
+
+    Args:
+        data: PyG Data or HeteroData object
+        device: torch.device or string ('cpu', 'cuda', etc.)
+
+    Returns:
+        Data object with all tensors moved to device
+
+    Example:
+        >>> data = Planetoid(root='/tmp/Cora', name='Cora')[0]
+        >>> data = move_to_device(data, 'cuda')
+        >>>
+        >>> hetero_data = convert_to_heterogeneous(data)
+        >>> hetero_data = move_to_device(hetero_data, 'cuda')
+    """
+    from torch_geometric.data import HeteroData, Data
+
+    if isinstance(device, str):
+        device = torch.device(device)
+
+    if isinstance(data, HeteroData):
+        # Move heterogeneous data
+        for node_type in data.node_types:
+            # Move features
+            if hasattr(data[node_type], 'x') and data[node_type].x is not None:
+                data[node_type].x = data[node_type].x.to(device)
+            # Move labels
+            if hasattr(data[node_type], 'y') and data[node_type].y is not None:
+                data[node_type].y = data[node_type].y.to(device)
+            # Move masks
+            for mask_name in ['train_mask', 'val_mask', 'test_mask']:
+                if hasattr(data[node_type], mask_name):
+                    mask = getattr(data[node_type], mask_name)
+                    if mask is not None:
+                        setattr(data[node_type], mask_name, mask.to(device))
+
+        # Move edge indices
+        for edge_type in data.edge_types:
+            if hasattr(data[edge_type], 'edge_index') and data[edge_type].edge_index is not None:
+                data[edge_type].edge_index = data[edge_type].edge_index.to(device)
+
+    elif isinstance(data, Data):
+        # Move regular Data object
+        data = data.to(device)
+
+    else:
+        raise TypeError(f"Expected Data or HeteroData, got {type(data)}")
+
+    return data

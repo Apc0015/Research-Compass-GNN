@@ -16,7 +16,9 @@
 Research Compass GNN is a professional Graph Neural Network platform for academic citation network analysis. The system implements state-of-the-art GNN architectures with comprehensive evaluation, baseline comparisons, and visualization tools.
 
 ### Key Features
-- **4 GNN Architectures**: GCN, GAT, GraphSAGE, Graph Transformer
+- **6 GNN Architectures**: GCN, GAT, GraphSAGE, Graph Transformer, HAN, R-GCN
+- **Heterogeneous Graphs**: Multi-relational learning with HAN
+- **Relational Graphs**: Citation type-aware processing with R-GCN
 - **Multi-Task Learning**: Simultaneous link prediction and node classification
 - **Adaptive Training**: Learning rate scheduling, mini-batch training
 - **Comprehensive Evaluation**: Professional metrics, statistical tests, ablation studies
@@ -33,10 +35,12 @@ Research-Compass-GNN/
 │   ├── gcn.py                  # Graph Convolutional Network
 │   ├── gat.py                  # Graph Attention Network (multi-task)
 │   ├── graphsage.py            # GraphSAGE (inductive learning)
-│   └── graph_transformer.py     # Graph Transformer
+│   ├── graph_transformer.py     # Graph Transformer
+│   ├── han.py                  # Heterogeneous Attention Network (NEW)
+│   └── rgcn.py                 # Relational GCN (NEW)
 │
 ├── training/                    # Training utilities
-│   ├── trainer.py              # Trainers with LR scheduling
+│   ├── trainer.py              # Trainers with LR scheduling (includes HANTrainer)
 │   └── batch_training.py       # Mini-batch training for large graphs
 │
 ├── evaluation/                  # Evaluation framework
@@ -45,7 +49,9 @@ Research-Compass-GNN/
 │   └── report_generator.py     # Auto-generated reports
 │
 ├── data/                        # Dataset utilities
-│   └── dataset_utils.py        # Synthetic & real dataset loading
+│   ├── dataset_utils.py        # Synthetic & real dataset loading
+│   ├── heterogeneous_graph_builder.py  # Convert to heterogeneous graphs (NEW)
+│   └── citation_type_classifier.py     # Classify citation types (NEW)
 │
 ├── baselines/                   # Baseline models
 │   ├── traditional_ml.py       # MLP, Logistic, Random Forest, SVM
@@ -155,6 +161,61 @@ class GraphTransformerModel(nn.Module):
 - Projects back to original dimension (compatibility)
 - Optional features for flexibility
 
+#### HAN (Heterogeneous Attention Network)
+```python
+class HANModel(nn.Module):
+    """
+    Multi-relational graph learning with hierarchical attention
+
+    Architecture:
+    - Node-level attention: GAT-based within each metapath
+    - Semantic-level attention: Across different metapaths
+    - HeteroConv layers for each edge type
+    - Final aggregation with learned weights
+
+    Use case: Multi-relational graphs (papers+authors+venues+topics)
+    """
+```
+
+**Design Decisions:**
+- Hierarchical attention (node → semantic)
+- Lazy initialization for flexible input dimensions
+- 8 attention heads (captures rich metapath patterns)
+- Semantic attention learns metapath importance
+- Supports heterogeneous data with 4 node types, 7 edge types
+
+**Graph Structure:**
+- Node Types: paper, author, venue, topic
+- Edge Types: cites, written_by, published_in, belongs_to (+ reverse)
+
+#### R-GCN (Relational GCN)
+```python
+class RGCNModel(nn.Module):
+    """
+    Citation type-aware graph convolution
+
+    Architecture:
+    - Relation-specific transformations
+    - Basis-decomposition for parameter efficiency
+    - Batch normalization for stability
+    - Handles 4 citation types
+
+    Use case: Citation networks with typed relationships
+    """
+```
+
+**Design Decisions:**
+- 4 citation types (EXTENDS, METHODOLOGY, BACKGROUND, COMPARISON)
+- Basis-decomposition with 30 bases (parameter efficiency)
+- Batch normalization (training stability)
+- Heuristic classifier based on temporal gap, citation counts, topic similarity
+
+**Citation Types:**
+- EXTENDS: Same topic, recent (< 3 years)
+- METHODOLOGY: Cross-topic, highly cited (> 75th percentile)
+- BACKGROUND: Old (> 5 years) or very highly cited (> 90th percentile)
+- COMPARISON: Default fallback
+
 ---
 
 ### 2. Training Pipeline (`training/`)
@@ -206,6 +267,31 @@ class MultiTaskGATTrainer(BaseTrainer):
 - 70/30 split (link prediction is primary task)
 - Separate metric tracking for analysis
 - Uses link accuracy for LR scheduling
+
+#### HANTrainer
+```python
+class HANTrainer(BaseTrainer):
+    """
+    Specialized trainer for Heterogeneous Attention Network
+
+    Features:
+    - Handles heterogeneous graph data (HeteroData)
+    - Target node type specification (default: 'paper')
+    - Attention weight extraction and tracking
+    - Gradient clipping (max_norm=1.0)
+
+    Tracks:
+    - Training loss and accuracy
+    - Validation loss and accuracy
+    - Semantic attention weights (optional)
+    """
+```
+
+**Design Decisions:**
+- Only trains/evaluates on target node type (paper)
+- Gradient clipping prevents exploding gradients in complex heterogeneous graphs
+- Attention history for interpretability
+- Compatible with standard BaseTrainer features (LR scheduling, checkpointing)
 
 #### Mini-Batch Training
 ```python
@@ -479,6 +565,8 @@ comparison = compare_models({
 | GAT | ~500K | Medium (3-5 min) | Medium (20-50ms) | Medium | Link prediction, attention |
 | GraphSAGE | ~200K | Fast (1-2 min) | Fast (<20ms) | Low | Large graphs, inductive |
 | Transformer | ~2M | Slow (10-15 min) | Slow (100-500ms) | High | High-quality embeddings |
+| HAN | ~800K | Medium (5-8 min) | Medium (30-80ms) | Medium | Multi-relational graphs, metapath reasoning |
+| R-GCN | ~150K | Fast (2-3 min) | Fast (<15ms) | Low | Typed relations, citation type analysis |
 
 ### Scalability
 
@@ -539,8 +627,10 @@ comparison = compare_models({
 - **GAT:** Veličković et al. (2018) - Graph Attention Networks
 - **GraphSAGE:** Hamilton et al. (2017) - Inductive Representation Learning
 - **Graph Transformer:** Shi et al. (2020) - Masked Label Prediction
+- **HAN:** Wang et al. (2019) - Heterogeneous Graph Attention Network
+- **R-GCN:** Schlichtkrull et al. (2018) - Modeling Relational Data with Graph Convolutional Networks
 
 ---
 
-*Last Updated: 2025-01-XX*
-*Version: 2.0 (Phase 1-4 Complete)*
+*Last Updated: 2025-11-12*
+*Version: 3.0 (Phase 1-5 Complete - 100%)*
