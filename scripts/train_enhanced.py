@@ -14,6 +14,11 @@ Usage:
     python train_enhanced.py --model GraphSAGE --dataset synthetic --size 5000 --minibatch
 """
 
+import sys
+from pathlib import Path
+# Add parent directory to path to import project modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import torch
 import torch.optim as optim
 import argparse
