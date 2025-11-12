@@ -1,28 +1,129 @@
-# Research Compass# Research Compass# 🧭 Research Compass
+# 🧭 Research Compass GNN
 
+Advanced Graph Neural Network platform for citation analysis and research exploration
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![PyG](https://img.shields.io/badge/PyG-2.3+-3C2179.svg)](https://pytorch-geometric.readthedocs.io/)
 
-Advanced AI-powered research exploration platform with Graph Neural Networks
+## 🆕 New Features (Latest Update)
 
+### 1. Real Dataset Benchmark Notebook
+**File:** `real_dataset_benchmark.ipynb`
 
+A comprehensive Jupyter notebook for evaluating GNN models on standard benchmark datasets:
+- **Datasets:** Cora (2,708 papers), CiteSeer (3,327 papers), PubMed (19,717 papers)
+- **Models:** GCN, GAT, Graph Transformer
+- **Features:**
+  - Automatic dataset loading from PyTorch Geometric
+  - Training with progress tracking and visualization
+  - Performance comparison with published benchmarks
+  - Confusion matrices and per-class accuracy breakdown
+  - Training curves and comprehensive visualizations
+  - Key findings and recommendations
 
-## Overview**Advanced AI-powered research exploration platform with Graph Neural Networks**> **Advanced AI-powered research exploration platform with Graph Neural Networks**
+**Usage:**
+```bash
+jupyter notebook real_dataset_benchmark.ipynb
+```
 
+**Expected Results:** 70-82% accuracy on citation network classification tasks, comparable to published benchmarks.
 
+### 2. Interactive Gradio UI with Real Data Training
+**File:** `launcher.py`
+
+A professional web interface for training GNNs on your own research papers:
+
+**Features:**
+- 📤 **PDF Upload & Processing**
+  - Multi-file PDF upload
+  - Automatic citation extraction
+  - Knowledge graph construction
+  - Metadata extraction (authors, year, venue)
+
+- 🤖 **GNN Model Training**
+  - Choose from GCN, GAT, or Graph Transformer
+  - Configurable epochs (10-100) and learning rate
+  - Real-time training progress with live accuracy curves
+  - Support for Node Classification and Link Prediction tasks
+
+- 🔮 **Predictions & Analysis**
+  - Category classification for papers
+  - Citation link prediction (find missing citations)
+  - Top-K results with confidence scores
+  - Interactive paper selection
+
+- 💾 **Export Capabilities**
+  - Save trained models (.pt files)
+  - Export predictions to CSV
+  - Download training visualizations
+
+**Usage:**
+```bash
+python launcher.py
+# Access at http://localhost:7860
+```
+
+**UI Layout:**
+```
+┌─────────────────────────────────────────────────────┐
+│  Tab 1: 🏠 Welcome & Demo                           │
+│  Tab 2: 📄 Real Data Training (NEW!)                │
+│  Tab 3: ℹ️ About                                    │
+├──────────────────────────┬──────────────────────────┤
+│  LEFT: PDF Upload        │  RIGHT: GNN Training     │
+│  • Upload PDFs           │  • Select Model (GCN)    │
+│  • Extract Citations     │  • Set Epochs/LR         │
+│  • Build Graph           │  • Train & Visualize     │
+│  • Graph Statistics      │  • Make Predictions      │
+└──────────────────────────┴──────────────────────────┘
+```
+
+## Overview
 
 Research Compass combines knowledge graphs, vector embeddings, and Graph Neural Networks to provide intelligent paper recommendations, citation analysis, and research insights.
 
 
 
-## Prerequisites[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+## 🚀 Quick Start
 
+### Option 1: Run the Benchmark Notebook
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
+# Install PyG for CPU
+pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
 
-- Python 3.11+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# Launch notebook
+jupyter notebook real_dataset_benchmark.ipynb
+```
 
-- Neo4j Aura account or Neo4j Desktop
+### Option 2: Launch the Gradio UI
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-- LLM provider (Ollama, OpenRouter, OpenAI, or LM Studio)[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()[![GraphRAG](https://img.shields.io/badge/type-GraphRAG-green.svg)]()
+# Launch web interface
+python launcher.py
+
+# Open browser to http://localhost:7860
+```
+
+### Option 3: Run Existing Comparison Study
+```bash
+# Train models on synthetic citation network
+python comparison_study.py 200 50
+# Arguments: [num_papers] [epochs]
+```
+
+## Prerequisites
+
+- Python 3.11+
+- PyTorch 2.0+
+- PyTorch Geometric 2.3+
+- Gradio 4.0+ (for UI)
 
 
 
