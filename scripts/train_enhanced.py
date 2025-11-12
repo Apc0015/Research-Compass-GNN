@@ -50,7 +50,7 @@ def parse_args():
 
     # Dataset selection
     parser.add_argument('--dataset', type=str, default='synthetic',
-                        choices=['synthetic', 'Cora', 'CiteSeer', 'PubMed'],
+                        choices=['synthetic', 'Cora', 'CiteSeer', 'PubMed', 'ogbn-arxiv', 'ogbn-mag'],
                         help='Dataset to use')
     parser.add_argument('--size', type=int, default=200,
                         help='Number of papers for synthetic dataset')

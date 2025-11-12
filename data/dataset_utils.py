@@ -4,6 +4,7 @@ Dataset utilities for creating and loading citation networks
 Supports:
 - Synthetic citation networks
 - Real datasets (Cora, CiteSeer, PubMed)
+- Open Graph Benchmark datasets (ogbn-arxiv, ogbn-mag)
 - Dataset statistics and visualization
 """
 
@@ -13,6 +14,14 @@ from torch_geometric.data import Data
 from torch_geometric.datasets import Planetoid
 from typing import Tuple, Dict, Optional
 import os
+
+# Try to import OGB, but don't fail if not installed
+try:
+    from ogb.nodeproppred import PygNodePropPredDataset
+    OGB_AVAILABLE = True
+except ImportError:
+    OGB_AVAILABLE = False
+    PygNodePropPredDataset = None
 
 
 def create_synthetic_citation_network(
@@ -142,9 +151,11 @@ def load_citation_dataset(
     - Cora: 2,708 papers, 7 classes, 5,429 citations
     - CiteSeer: 3,327 papers, 6 classes, 4,732 citations
     - PubMed: 19,717 papers, 3 classes, 44,338 citations
+    - ogbn-arxiv: ~170k papers, 40 classes, ~1.1M citations
+    - ogbn-mag: ~1.9M papers, 349 classes, ~21M citations
 
     Args:
-        name: Dataset name ('Cora', 'CiteSeer', or 'PubMed')
+        name: Dataset name ('Cora', 'CiteSeer', 'PubMed', 'ogbn-arxiv', 'ogbn-mag')
         root: Root directory to store dataset
         transform: Optional transform to apply
 
@@ -156,6 +167,10 @@ def load_citation_dataset(
         >>> print(f"Loaded {info['name']}: {info['num_nodes']} nodes, {info['num_classes']} classes")
     """
     print(f"📚 Loading {name} dataset...")
+
+    # Handle Open Graph Benchmark datasets
+    if name.startswith('ogbn-'):
+        return load_ogb_dataset(name, root, transform)
 
     # Load dataset using PyTorch Geometric
     dataset = Planetoid(root=root, name=name, transform=transform)
@@ -177,10 +192,91 @@ def load_citation_dataset(
     }
 
     print(f"✅ Loaded {name}")
-    print(f"   Nodes: {info['num_nodes']}, Edges: {info['num_edges']}, Classes: {info['num_classes']}")
+    print(f"   Nodes: {info['num_nodes']:,}, Edges: {info['num_edges']:,}, Classes: {info['num_classes']}")
     print(f"   Features: {info['num_features']}")
-    print(f"   Train: {info['num_train']}, Val: {info['num_val']}, Test: {info['num_test']}")
+    print(f"   Train: {info['num_train']:,}, Val: {info['num_val']:,}, Test: {info['num_test']:,}")
 
+    return data, info
+
+
+def load_ogb_dataset(
+    name: str,
+    root: str = 'data/raw',
+    transform: Optional[callable] = None
+) -> Tuple[Data, Dict]:
+    """
+    Load Open Graph Benchmark datasets
+    
+    Args:
+        name: Dataset name ('ogbn-arxiv', 'ogbn-mag')
+        root: Root directory to store dataset
+        transform: Optional transform to apply
+        
+    Returns:
+        Tuple of (data, info_dict)
+    """
+    if not OGB_AVAILABLE:
+        raise ImportError(
+            "OGB (Open Graph Benchmark) package not installed. "
+            "Please install it with: pip install ogb"
+        )
+    
+    print(f"🔬 Loading OGB dataset: {name}")
+    
+    # Download and load dataset
+    dataset = PygNodePropPredDataset(name=name, root=root)
+    
+    # Get the graph data
+    data = dataset[0]
+    
+    # Convert to PyG format with proper splits
+    split_idx = dataset.get_idx_split()
+    data.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+    data.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+    data.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+    
+    data.train_mask[split_idx['train']] = True
+    data.val_mask[split_idx['valid']] = True
+    data.test_mask[split_idx['test']] = True
+    
+    # Convert labels to 0-based indexing
+    if hasattr(data, 'y'):
+        data.y = data.y.view(-1)
+    
+    # Apply transform if provided
+    if transform is not None:
+        data = transform(data)
+    
+    # Dataset info
+    info = {
+        'name': name,
+        'num_nodes': data.num_nodes,
+        'num_edges': data.num_edges,
+        'num_features': data.num_features,
+        'num_classes': dataset.num_classes,
+        'num_train': data.train_mask.sum().item(),
+        'num_val': data.val_mask.sum().item(),
+        'num_test': data.test_mask.sum().item(),
+        'is_directed': True,
+        'has_node_features': True,
+        'has_edge_features': False,
+        'dataset_type': 'OGB'
+    }
+    
+    print(f"✅ Loaded {name}")
+    print(f"   Nodes: {info['num_nodes']:,}, Edges: {info['num_edges']:,}, Classes: {info['num_classes']}")
+    print(f"   Features: {info['num_features']}")
+    print(f"   Train: {info['num_train']:,}, Val: {info['num_val']:,}, Test: {info['num_test']:,}")
+    
+    # Dataset-specific information
+    if name == 'ogbn-arxiv':
+        print(f"   📄 arXiv papers: Computer science papers from arXiv")
+        print(f"   🏷️  Task: Paper subject classification (40 categories)")
+    elif name == 'ogbn-mag':
+        print(f"   📄 Microsoft Academic Graph: Large-scale heterogeneous network")
+        print(f"   🏷️  Task: Conference venue classification (349 categories)")
+        print(f"   ⚠️  Note: This is a large dataset - may require significant memory")
+    
     return data, info
 
 

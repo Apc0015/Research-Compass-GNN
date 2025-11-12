@@ -45,7 +45,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Compare All Models')
 
     parser.add_argument('--dataset', type=str, default='Cora',
-                        choices=['synthetic', 'Cora', 'CiteSeer', 'PubMed'],
+                        choices=['synthetic', 'Cora', 'CiteSeer', 'PubMed', 'ogbn-arxiv', 'ogbn-mag'],
                         help='Dataset to use')
     parser.add_argument('--size', type=int, default=500,
                         help='Size for synthetic dataset')
@@ -126,6 +126,9 @@ def main():
             seed=args.seed
         )
         dataset_name = f"Synthetic ({args.size} nodes)"
+    elif args.dataset.startswith('ogbn-'):
+        data, info = load_citation_dataset(args.dataset)
+        dataset_name = args.dataset
     else:
         data, info = load_citation_dataset(args.dataset)
         dataset_name = args.dataset
