@@ -832,53 +832,6 @@ def export_results():
 
 
 # ============================================================================
-# DEMO TAB FUNCTIONS
-# ============================================================================
-
-def run_demo():
-    """Run a quick demo on synthetic data"""
-    status = "🎮 Running Demo...\n\n"
-
-    # Create synthetic citation network
-    from data.dataset_utils import create_synthetic_citation_network
-
-    status += "Creating synthetic citation network (50 papers)...\n"
-    data = create_synthetic_citation_network(num_papers=50, num_topics=3, avg_citations=5)
-
-    status += f"✅ Created graph: {data.num_nodes} nodes, {data.num_edges} edges\n\n"
-
-    status += "Training GCN model (20 epochs)...\n"
-    model = GCNModel(input_dim=384, hidden_dim=64, output_dim=3, num_layers=2)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = model.to(device)
-    data = data.to(device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-    for epoch in range(20):
-        model.train()
-        optimizer.zero_grad()
-        out = model(data.x, data.edge_index)
-        loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
-        loss.backward()
-        optimizer.step()
-
-        if epoch % 5 == 0:
-            model.eval()
-            with torch.no_grad():
-                out = model(data.x, data.edge_index)
-                pred = out.argmax(dim=1)
-                acc = (pred[data.test_mask] == data.y[data.test_mask]).float().mean()
-                status += f"Epoch {epoch}: Loss={loss.item():.4f}, Acc={acc.item():.4f}\n"
-
-    status += "\n✅ Demo complete! Model trained successfully.\n"
-    status += "\nTry the 'Real Data Training' tab to upload your own papers!"
-
-    return status
-
-
-# ============================================================================
 # GRADIO UI
 # ============================================================================
 
@@ -896,41 +849,50 @@ def create_ui():
 
         with gr.Tabs():
             # ================================================================
-            # TAB 1: WELCOME & DEMO
+            # TAB 1: WELCOME
             # ================================================================
-            with gr.Tab("🏠 Welcome"):
+            with gr.Tab("Welcome"):
                 gr.Markdown("""
                 ## Welcome to Research Compass GNN!
 
                 This platform allows you to:
                 - 📄 Upload and process research papers (PDFs)
                 - 🕸️ Build knowledge graphs from citations
-                - 🤖 Train Graph Neural Networks (GCN, GAT, Transformer)
+                - 🤖 Train Graph Neural Networks (GCN, GAT, Transformer, HAN, R-GCN)
                 - 🔮 Make predictions on paper categories and citations
-                - 📊 Visualize training progress and results
+                - 📊 Visualize training progress and results with live interactive graphs
 
-                ### Quick Start:
-                1. Go to **"📄 Real Data Training"** tab
-                2. Upload your PDF files
-                3. Process papers to build a graph
-                4. Train a GNN model
-                5. Make predictions!
+                ### 🚀 Quick Start:
+                1. Go to **"Real Data Training"** tab
+                2. Upload your PDF files (or use the arXiv papers in `datasets/arxiv_papers/`)
+                3. Process papers to build a citation graph
+                4. Select a GNN model (GCN, GAT, GraphSAGE, HAN, or R-GCN)
+                5. Train the model and watch live visualization updates
+                6. Make predictions and export results!
 
-                ### Or try the demo:
+                ### 📚 Available Datasets:
+                - **Standard Benchmarks:** Cora, CiteSeer, PubMed (built-in)
+                - **arXiv Papers:** 10 foundational GNN papers (see `datasets/arxiv_papers/`)
+                - **Synthetic Networks:** Generate custom citation networks
+
+                ### 🤖 Available Models:
+                1. **GCN** - Graph Convolutional Network
+                2. **GAT** - Graph Attention Network
+                3. **GraphSAGE** - Inductive representation learning
+                4. **Graph Transformer** - Transformer for graphs
+                5. **HAN** - Heterogeneous Attention Network
+                6. **R-GCN** - Relational Graph Convolutional Network
+
+                ### 📖 Documentation:
+                - Upload instructions: `datasets/HOW_TO_UPLOAD.txt`
+                - Dataset report: `datasets/DATASET_COLLECTION_REPORT.md`
+                - Usage guide: `docs/USAGE_GUIDE.md`
                 """)
-
-                demo_button = gr.Button("🎮 Run Quick Demo", variant="primary", size="lg")
-                demo_output = gr.Textbox(label="Demo Output", lines=15)
-
-                demo_button.click(
-                    fn=run_demo,
-                    outputs=demo_output
-                )
 
             # ================================================================
             # TAB 2: REAL DATA TRAINING WITH LIVE VISUALIZATION (MAIN FEATURE)
             # ================================================================
-            with gr.Tab("📄 Real Data Training + Live Visualization"):
+            with gr.Tab("Real Data Training"):
                 gr.Markdown("""
                 ## 🎨 Real Data Training with LIVE Interactive Graph Visualization
 
@@ -1079,7 +1041,7 @@ def create_ui():
             # ================================================================
             # TAB 3: EVALUATION METRICS ANALYSIS
             # ================================================================
-            with gr.Tab("📊 Evaluation Metrics"):
+            with gr.Tab("Evaluation Metrics"):
                 gr.Markdown("""
                 ## 📊 Comprehensive Evaluation Metrics
 
@@ -1189,7 +1151,7 @@ def create_ui():
             # ================================================================
             # TAB 4: ATTENTION VISUALIZATION
             # ================================================================
-            with gr.Tab("🔍 Attention Visualization"):
+            with gr.Tab("Attention Visualization"):
                 gr.Markdown("""
                 ## 🔍 GAT Attention Visualization
 
@@ -1298,7 +1260,7 @@ def create_ui():
             # ================================================================
             # TAB 5: TEMPORAL ANALYSIS
             # ================================================================
-            with gr.Tab("⏱️ Temporal Analysis"):
+            with gr.Tab("Temporal Analysis"):
                 gr.Markdown("""
                 ## ⏱️ Temporal Citation Analysis
 
@@ -1395,7 +1357,7 @@ def create_ui():
             # ================================================================
             # TAB 6: ABOUT
             # ================================================================
-            with gr.Tab("ℹ️ About"):
+            with gr.Tab("About"):
                 gr.Markdown("""
                 ## About Research Compass GNN
 
