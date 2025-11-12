@@ -1,0 +1,8 @@
+Sample Research Paper 1: Deep Learning for NLP
+
+This paper explores natural language processing using deep neural networks.
+We propose a novel architecture for sentiment analysis.
+
+References:
+[1] Smith et al., 2020
+[2] Johnson and Lee, 2019
