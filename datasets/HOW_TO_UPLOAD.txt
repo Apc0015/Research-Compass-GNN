@@ -1,0 +1,150 @@
+=== HOW TO UPLOAD ARXIV PAPERS TO RESEARCH COMPASS GNN ===
+
+This guide explains how to use the downloaded arXiv papers with your Research Compass GNN project.
+
+DATASET LOCATION:
+-----------------
+All papers are stored in: datasets/arxiv_papers/
+
+FILES INCLUDED:
+--------------
+1. Attention_Is_All_You_Need_2017.pdf (2.2M) - Transformer architecture
+2. DGL_Deep_Graph_Library_2019.pdf (660K) - DGL framework
+3. GAT_Velickovic_2018.pdf (1.6M) - Graph Attention Networks
+4. GCN_Kipf_Welling_2017.pdf (854K) - Graph Convolutional Networks
+5. GIN_Xu_2019.pdf (801K) - Graph Isomorphism Network
+6. GraphSAGE_Hamilton_2017.pdf (1.1M) - GraphSAGE inductive learning
+7. Graph_Transformers_Dwivedi_2020.pdf (468K) - Graph Transformers
+8. HAN_Wang_2019.pdf (2.7M) - Heterogeneous Attention Network
+9. Neural_Message_Passing_Gilmer_2017.pdf (512K) - Message passing framework
+10. RGCN_Schlichtkrull_2018.pdf (324K) - Relational GCN
+
+TOTAL: 10 papers, 11M total size
+
+USAGE OPTIONS:
+-------------
+
+OPTION 1: Use with Gradio UI (Recommended for Quick Testing)
+------------------------------------------------------------
+1. Start the Gradio interface:
+   python scripts/launcher.py
+
+2. Navigate to Tab 2 "Real Data Training" (if available)
+
+3. Upload PDFs one at a time or in batch
+
+4. The system will:
+   - Extract text and metadata from PDFs
+   - Build citation network (if papers cite each other)
+   - Create graph structure
+   - Train selected GNN model
+
+OPTION 2: Process Papers Programmatically
+-----------------------------------------
+Create a Python script to process the papers:
+
+```python
+import os
+from torch_geometric.data import Data
+
+# List all papers
+paper_dir = "datasets/arxiv_papers/"
+papers = [f for f in os.listdir(paper_dir) if f.endswith('.pdf')]
+
+# Process papers (you'll need a PDF parser)
+# Example: PyPDF2, pdfplumber, or GROBID for academic PDFs
+
+for paper in papers:
+    pdf_path = os.path.join(paper_dir, paper)
+    # Extract text, metadata, references
+    # Build citation graph
+    # Create PyG Data object
+```
+
+OPTION 3: Create Citation Network from Paper Metadata
+-----------------------------------------------------
+Manually create a citation network CSV:
+
+papers.csv:
+paper_id,title,year,arxiv_id
+1,Semi-Supervised Classification with Graph Convolutional Networks,2017,1609.02907
+2,Graph Attention Networks,2018,1710.10903
+3,Inductive Representation Learning on Large Graphs,2017,1706.02216
+4,Attention Is All You Need,2017,1706.03762
+5,Modeling Relational Data with Graph Convolutional Networks,2018,1703.06103
+6,Heterogeneous Graph Attention Network,2019,1903.07293
+7,How Powerful are Graph Neural Networks,2019,1810.00826
+8,Neural Message Passing for Quantum Chemistry,2017,1704.01212
+9,Deep Graph Library,2019,1909.01315
+10,A Generalization of Transformer Networks to Graphs,2020,2012.09699
+
+citations.csv:
+source_id,target_id,citation_type
+2,1,EXTENDS
+3,1,METHODOLOGY
+5,1,METHODOLOGY
+6,1,BACKGROUND
+6,2,METHODOLOGY
+7,1,EXTENDS
+7,3,EXTENDS
+8,1,BACKGROUND
+9,1,BACKGROUND
+9,2,BACKGROUND
+9,3,BACKGROUND
+10,4,EXTENDS
+
+Then load with:
+```python
+import pandas as pd
+papers = pd.read_csv('papers.csv')
+citations = pd.read_csv('citations.csv')
+```
+
+EXPECTED RESULTS:
+----------------
+After uploading and processing:
+- Citation graph with 10 nodes (papers)
+- Edges representing citations between papers
+- Node features from paper text/metadata
+- Trained GNN model for:
+  * Paper classification (by topic/field)
+  * Citation prediction
+  * Paper importance ranking
+
+RECOMMENDED NEXT STEPS:
+----------------------
+1. Start with OPTION 1 (Gradio UI) for quick testing
+2. Select a simple model first (GCN or GAT)
+3. Use small number of epochs (20-50) for initial tests
+4. Review attention weights to see which papers are most important
+5. Compare different GNN architectures (GCN vs GAT vs GraphSAGE)
+
+TROUBLESHOOTING:
+---------------
+- If PDFs can't be read: Check file permissions (chmod 644 *.pdf)
+- If citation network is sparse: Papers may not cite each other directly
+- If training fails: Start with synthetic data first to verify setup
+- If memory issues: Use mini-batch training or smaller models
+
+CITATION INFORMATION:
+--------------------
+All papers are from arXiv.org (open access). If you use these in research:
+
+GCN: Kipf & Welling (2017) - arXiv:1609.02907
+GAT: Veličković et al. (2018) - arXiv:1710.10903
+GraphSAGE: Hamilton et al. (2017) - arXiv:1706.02216
+Attention: Vaswani et al. (2017) - arXiv:1706.03762
+R-GCN: Schlichtkrull et al. (2018) - arXiv:1703.06103
+HAN: Wang et al. (2019) - arXiv:1903.07293
+GIN: Xu et al. (2019) - arXiv:1810.00826
+MPNN: Gilmer et al. (2017) - arXiv:1704.01212
+DGL: Wang et al. (2019) - arXiv:1909.01315
+Graph Transformers: Dwivedi & Bresson (2020) - arXiv:2012.09699
+
+ADDITIONAL RESOURCES:
+--------------------
+- For pre-processed datasets: See datasets/README.md (if available)
+- For synthetic data generation: Use scripts/generate_synthetic.py
+- For real citation networks: Download Cora, CiteSeer, or PubMed datasets
+
+Questions? Check docs/USAGE_GUIDE.md or README.md
