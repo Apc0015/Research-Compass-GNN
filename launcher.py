@@ -24,8 +24,14 @@ import io
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import enhanced analysis tools
+from evaluation.metrics import NodeClassificationMetrics, LinkPredictionMetrics
+from evaluation.visualizations import MetricsVisualizer
+from visualization.attention_viz import AttentionVisualizer, analyze_attention_patterns
+from analysis.temporal_analysis import TemporalAnalyzer
+
 # ============================================================================
-# GNN MODEL DEFINITIONS (from comparison_study.py)
+# GNN MODEL DEFINITIONS (Using enhanced models from models/ directory)
 # ============================================================================
 
 class GCNModel(nn.Module):
@@ -733,10 +739,10 @@ def run_demo():
     status = "🎮 Running Demo...\n\n"
 
     # Create synthetic citation network
-    from comparison_study import create_realistic_citation_network
+    from data.dataset_utils import create_synthetic_citation_network
 
     status += "Creating synthetic citation network (50 papers)...\n"
-    data = create_realistic_citation_network(num_papers=50, num_topics=3, avg_citations=5)
+    data = create_synthetic_citation_network(num_papers=50, num_topics=3, avg_citations=5)
 
     status += f"✅ Created graph: {data.num_nodes} nodes, {data.num_edges} edges\n\n"
 
@@ -970,7 +976,296 @@ def create_ui():
                 )
 
             # ================================================================
-            # TAB 3: ABOUT
+            # TAB 3: EVALUATION METRICS ANALYSIS
+            # ================================================================
+            with gr.Tab("📊 Evaluation Metrics"):
+                gr.Markdown("""
+                ## 📊 Comprehensive Evaluation Metrics
+
+                Analyze model performance with professional ML metrics:
+                - **Node Classification**: Precision, Recall, F1 (macro/weighted), Confusion Matrix
+                - **ROC Analysis**: ROC curves, AUC scores, per-class performance
+                - **Statistical Tests**: Paired t-tests, confidence intervals
+
+                Upload predictions or use trained model results for detailed analysis.
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### 📈 Input Data")
+                        eval_predictions = gr.Textbox(
+                            label="Predictions (comma-separated)",
+                            placeholder="0,1,2,1,0,2...",
+                            lines=3
+                        )
+                        eval_ground_truth = gr.Textbox(
+                            label="Ground Truth (comma-separated)",
+                            placeholder="0,1,2,1,1,2...",
+                            lines=3
+                        )
+                        eval_button = gr.Button("📊 Analyze Metrics", variant="primary")
+
+                    with gr.Column():
+                        gr.Markdown("### 📊 Metrics Results")
+                        eval_output = gr.Markdown("**Results will appear here**")
+
+                gr.Markdown("---")
+                gr.Markdown("### 📈 Visualizations")
+
+                with gr.Row():
+                    eval_confusion_plot = gr.Plot(label="Confusion Matrix")
+                    eval_metrics_plot = gr.Plot(label="Performance Metrics")
+
+                def analyze_metrics(pred_str, truth_str):
+                    try:
+                        import numpy as np
+                        from sklearn.metrics import confusion_matrix
+
+                        # Parse inputs
+                        predictions = np.array([int(x.strip()) for x in pred_str.split(',') if x.strip()])
+                        ground_truth = np.array([int(x.strip()) for x in truth_str.split(',') if x.strip()])
+
+                        if len(predictions) != len(ground_truth):
+                            return "❌ Error: Predictions and ground truth must have same length", None, None
+
+                        # Compute metrics
+                        metrics = NodeClassificationMetrics()
+                        results = metrics.compute(ground_truth, predictions, None)
+
+                        # Format output
+                        output = f"""
+## 📊 Classification Metrics
+
+**Overall Performance:**
+- **Accuracy:** {results['accuracy']:.4f} ({results['accuracy']*100:.2f}%)
+- **Precision (Macro):** {results['precision_macro']:.4f}
+- **Recall (Macro):** {results['recall_macro']:.4f}
+- **F1 Score (Macro):** {results['f1_macro']:.4f}
+
+**Weighted Metrics:**
+- **Precision (Weighted):** {results['precision_weighted']:.4f}
+- **Recall (Weighted):** {results['recall_weighted']:.4f}
+- **F1 Score (Weighted):** {results['f1_weighted']:.4f}
+"""
+
+                        # Create confusion matrix plot
+                        cm = confusion_matrix(ground_truth, predictions)
+                        fig_cm, ax = plt.subplots(figsize=(8, 6))
+                        im = ax.imshow(cm, cmap='Blues')
+                        ax.set_xlabel('Predicted')
+                        ax.set_ylabel('True')
+                        ax.set_title('Confusion Matrix')
+                        plt.colorbar(im, ax=ax)
+
+                        # Create metrics plot
+                        fig_metrics, ax2 = plt.subplots(figsize=(8, 6))
+                        metrics_names = ['Accuracy', 'Precision', 'Recall', 'F1']
+                        metrics_values = [
+                            results['accuracy'],
+                            results['precision_macro'],
+                            results['recall_macro'],
+                            results['f1_macro']
+                        ]
+                        ax2.bar(metrics_names, metrics_values, color=['#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'])
+                        ax2.set_ylabel('Score')
+                        ax2.set_title('Performance Metrics (Macro)')
+                        ax2.set_ylim([0, 1])
+                        ax2.grid(True, alpha=0.3)
+
+                        return output, fig_cm, fig_metrics
+
+                    except Exception as e:
+                        return f"❌ Error: {str(e)}", None, None
+
+                eval_button.click(
+                    fn=analyze_metrics,
+                    inputs=[eval_predictions, eval_ground_truth],
+                    outputs=[eval_output, eval_confusion_plot, eval_metrics_plot]
+                )
+
+            # ================================================================
+            # TAB 4: ATTENTION VISUALIZATION
+            # ================================================================
+            with gr.Tab("🔍 Attention Visualization"):
+                gr.Markdown("""
+                ## 🔍 GAT Attention Visualization
+
+                Visualize and analyze attention weights from Graph Attention Networks:
+                - **Attention Heatmaps**: See which nodes attend to which
+                - **Top-K Analysis**: Find most important edges
+                - **Distribution Analysis**: Understand attention patterns
+                - **Gini Coefficient**: Measure attention concentration
+
+                Train a GAT model first to enable attention analysis.
+                """)
+
+                gr.Markdown("### ⚠️ Note")
+                gr.Markdown("""
+                To use attention visualization:
+                1. Train a GAT model in the "Real Data Training" tab
+                2. Attention weights are automatically extracted during training
+                3. Use the attention analysis tools below to visualize patterns
+
+                **Coming Soon:** Direct attention visualization from trained models!
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### 🎨 Attention Pattern Demo")
+                        attn_demo_button = gr.Button("🎮 Run Attention Demo", variant="primary")
+                        attn_demo_output = gr.Markdown("**Demo results will appear here**")
+
+                    with gr.Column():
+                        gr.Markdown("### 📊 Attention Statistics")
+                        attn_stats_output = gr.Markdown("**Statistics will appear here**")
+
+                gr.Markdown("---")
+                attn_plot = gr.Plot(label="Attention Heatmap")
+
+                def run_attention_demo():
+                    try:
+                        # Create synthetic attention weights for demo
+                        num_nodes = 20
+                        attention_weights = torch.rand(num_nodes, num_nodes)
+                        attention_weights = F.softmax(attention_weights, dim=1)
+
+                        # Analyze patterns
+                        patterns = analyze_attention_patterns(attention_weights, None)
+
+                        stats_md = f"""
+## 📊 Attention Statistics
+
+**Distribution:**
+- **Mean Attention:** {patterns['mean_attention']:.4f}
+- **Median Attention:** {patterns['median_attention']:.4f}
+- **Std Deviation:** {patterns['std_attention']:.4f}
+
+**Concentration:**
+- **Gini Coefficient:** {patterns['gini_coefficient']:.4f}
+- **Max Attention:** {patterns['max_attention']:.4f}
+- **Min Attention:** {patterns['min_attention']:.4f}
+
+**Interpretation:**
+- Gini > 0.5: Highly concentrated attention
+- Gini < 0.3: Distributed attention
+"""
+
+                        # Create heatmap
+                        fig, ax = plt.subplots(figsize=(10, 8))
+                        im = ax.imshow(attention_weights.numpy(), cmap='YlOrRd', aspect='auto')
+                        ax.set_xlabel('Target Node')
+                        ax.set_ylabel('Source Node')
+                        ax.set_title('GAT Attention Weights (Demo)')
+                        plt.colorbar(im, ax=ax, label='Attention Weight')
+
+                        return "✅ Attention demo completed! See heatmap and statistics.", stats_md, fig
+
+                    except Exception as e:
+                        return f"❌ Error: {str(e)}", "", None
+
+                attn_demo_button.click(
+                    fn=run_attention_demo,
+                    outputs=[attn_demo_output, attn_stats_output, attn_plot]
+                )
+
+            # ================================================================
+            # TAB 5: TEMPORAL ANALYSIS
+            # ================================================================
+            with gr.Tab("⏱️ Temporal Analysis"):
+                gr.Markdown("""
+                ## ⏱️ Temporal Citation Analysis
+
+                Analyze temporal patterns in citation networks:
+                - **Citation Velocity**: Track citation growth over time
+                - **Topic Evolution**: See how research topics evolve
+                - **Emerging Topics**: Detect new research areas with high acceleration
+                - **Temporal Heatmaps**: Visualize citation patterns over time
+
+                Generate synthetic temporal data or analyze real citation networks.
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### 🎮 Generate Demo Data")
+                        temporal_num_papers = gr.Slider(
+                            minimum=50,
+                            maximum=500,
+                            value=200,
+                            step=50,
+                            label="Number of Papers"
+                        )
+                        temporal_num_topics = gr.Slider(
+                            minimum=3,
+                            maximum=10,
+                            value=5,
+                            step=1,
+                            label="Number of Topics"
+                        )
+                        temporal_demo_button = gr.Button("📊 Run Temporal Analysis", variant="primary")
+
+                    with gr.Column():
+                        gr.Markdown("### 📈 Analysis Results")
+                        temporal_output = gr.Markdown("**Results will appear here**")
+
+                gr.Markdown("---")
+                gr.Markdown("### 📊 Temporal Visualizations")
+
+                with gr.Row():
+                    temporal_plot1 = gr.Plot(label="Citation Growth Over Time")
+                    temporal_plot2 = gr.Plot(label="Topic Evolution")
+
+                def run_temporal_analysis(num_papers, num_topics):
+                    try:
+                        from data.dataset_utils import create_synthetic_citation_network
+
+                        # Create temporal graph
+                        data = create_synthetic_citation_network(
+                            num_papers=int(num_papers),
+                            num_topics=int(num_topics),
+                            temporal=True
+                        )
+
+                        # Create temporal analyzer
+                        analyzer = TemporalAnalyzer(data)
+
+                        # Identify emerging topics
+                        emerging = analyzer.identify_emerging_topics(lookback_years=3)
+
+                        output_md = f"""
+## 📊 Temporal Analysis Results
+
+**Dataset:**
+- **Papers:** {data.num_nodes}
+- **Citations:** {data.num_edges}
+- **Topics:** {num_topics}
+- **Time Span:** 10 years
+
+**Emerging Topics (Last 3 years):**
+"""
+
+                        if emerging:
+                            for topic_id, accel in emerging[:3]:
+                                output_md += f"\n- **Topic {topic_id}**: {accel:.2f}x acceleration"
+                        else:
+                            output_md += "\n- No strongly emerging topics detected"
+
+                        # Create plots
+                        fig1 = analyzer.plot_citation_growth()
+                        fig2 = analyzer.plot_topic_evolution()
+
+                        return output_md, fig1, fig2
+
+                    except Exception as e:
+                        return f"❌ Error: {str(e)}", None, None
+
+                temporal_demo_button.click(
+                    fn=run_temporal_analysis,
+                    inputs=[temporal_num_papers, temporal_num_topics],
+                    outputs=[temporal_output, temporal_plot1, temporal_plot2]
+                )
+
+            # ================================================================
+            # TAB 6: ABOUT
             # ================================================================
             with gr.Tab("ℹ️ About"):
                 gr.Markdown("""

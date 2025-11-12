@@ -420,3 +420,168 @@ class MultiTaskGATTrainer(BaseTrainer):
             'node_acc': node_acc,
             'metric': link_acc  # Use link accuracy for scheduler
         }
+
+
+class HANTrainer(BaseTrainer):
+    """
+    Trainer for Heterogeneous Attention Network (HAN)
+
+    Features:
+    - Handles heterogeneous graph data with multiple node and edge types
+    - Supports node classification on target node type (typically 'paper')
+    - Tracks attention weights for analysis
+    - Automatic learning rate scheduling
+
+    Args:
+        model: HAN model
+        optimizer: PyTorch optimizer
+        device: Device to train on
+        scheduler_config: Configuration for learning rate scheduler
+        target_node_type: Node type to predict on (default: 'paper')
+
+    Example:
+        >>> from models import create_han_model
+        >>> from data import convert_to_heterogeneous
+        >>> hetero_data = convert_to_heterogeneous(data)
+        >>> model = create_han_model(hetero_data, task='classification')
+        >>> optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        >>> trainer = HANTrainer(model, optimizer, target_node_type='paper')
+        >>> metrics = trainer.train_epoch(hetero_data)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        device: torch.device = None,
+        scheduler_config: Optional[Dict] = None,
+        target_node_type: str = 'paper'
+    ):
+        super().__init__(model, optimizer, device, scheduler_config)
+        self.target_node_type = target_node_type
+        self.attention_history = []
+
+    def train_epoch(
+        self,
+        hetero_data,
+        loss_fn: Optional[Callable] = None
+    ) -> Dict[str, float]:
+        """
+        Train for one epoch on heterogeneous graph
+
+        Args:
+            hetero_data: HeteroData object with x_dict, edge_index_dict, masks
+            loss_fn: Optional custom loss function
+
+        Returns:
+            Dictionary with training metrics
+        """
+        self.model.train()
+        self.optimizer.zero_grad()
+
+        start_time = time.time()
+
+        # Move data to device
+        x_dict = {k: v.to(self.device) for k, v in hetero_data.x_dict.items()}
+        edge_index_dict = {
+            k: v.to(self.device) for k, v in hetero_data.edge_index_dict.items()
+        }
+
+        # Forward pass
+        out_dict = self.model(x_dict, edge_index_dict)
+
+        # Compute loss (only on target node type with train mask)
+        out = out_dict[self.target_node_type]
+        y = hetero_data[self.target_node_type].y.to(self.device)
+        train_mask = hetero_data[self.target_node_type].train_mask.to(self.device)
+
+        if loss_fn is not None:
+            loss = loss_fn(out[train_mask], y[train_mask])
+        else:
+            loss = F.cross_entropy(out[train_mask], y[train_mask])
+
+        # Backward pass
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+        self.optimizer.step()
+
+        epoch_time = time.time() - start_time
+
+        # Compute training accuracy
+        with torch.no_grad():
+            pred = out[train_mask].argmax(dim=1)
+            train_acc = (pred == y[train_mask]).float().mean().item()
+
+        return {
+            'loss': loss.item(),
+            'accuracy': train_acc,
+            'time': epoch_time,
+            'lr': self.get_current_lr()
+        }
+
+    def validate(
+        self,
+        hetero_data,
+        loss_fn: Optional[Callable] = None,
+        return_attention: bool = False
+    ) -> Dict[str, float]:
+        """
+        Validate model on heterogeneous graph
+
+        Args:
+            hetero_data: HeteroData object
+            loss_fn: Optional custom loss function
+            return_attention: Whether to return attention weights
+
+        Returns:
+            Dictionary with validation metrics
+        """
+        self.model.eval()
+
+        with torch.no_grad():
+            # Move data to device
+            x_dict = {k: v.to(self.device) for k, v in hetero_data.x_dict.items()}
+            edge_index_dict = {
+                k: v.to(self.device) for k, v in hetero_data.edge_index_dict.items()
+            }
+
+            # Forward pass
+            if return_attention:
+                out_dict, attention_weights = self.model(
+                    x_dict, edge_index_dict, return_attention=True
+                )
+                self.attention_history.append(attention_weights)
+            else:
+                out_dict = self.model(x_dict, edge_index_dict)
+
+            # Compute metrics on validation set
+            out = out_dict[self.target_node_type]
+            y = hetero_data[self.target_node_type].y.to(self.device)
+            val_mask = hetero_data[self.target_node_type].val_mask.to(self.device)
+
+            # Loss
+            if loss_fn is not None:
+                loss = loss_fn(out[val_mask], y[val_mask])
+            else:
+                loss = F.cross_entropy(out[val_mask], y[val_mask])
+
+            # Accuracy
+            pred = out[val_mask].argmax(dim=1)
+            val_acc = (pred == y[val_mask]).float().mean().item()
+
+        result = {
+            'loss': loss.item(),
+            'accuracy': val_acc,
+            'metric': val_acc  # Use accuracy for scheduler
+        }
+
+        if return_attention:
+            result['attention_weights'] = attention_weights
+
+        return result
+
+    def get_attention_weights(self):
+        """Get attention weights from last validation"""
+        if len(self.attention_history) > 0:
+            return self.attention_history[-1]
+        return None
