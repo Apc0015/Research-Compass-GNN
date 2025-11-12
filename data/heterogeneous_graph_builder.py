@@ -73,9 +73,42 @@ class HeterogeneousGraphBuilder:
         # 1. Add paper nodes (from original graph)
         hetero_data['paper'].x = self.data.x
         hetero_data['paper'].y = self.data.y
-        hetero_data['paper'].train_mask = self.data.train_mask
-        hetero_data['paper'].val_mask = self.data.val_mask
-        hetero_data['paper'].test_mask = self.data.test_mask
+
+        # Check if masks exist before copying, otherwise create default 60/20/20 split
+        if hasattr(self.data, 'train_mask') and self.data.train_mask is not None:
+            hetero_data['paper'].train_mask = self.data.train_mask
+            hetero_data['paper'].val_mask = self.data.val_mask
+            hetero_data['paper'].test_mask = self.data.test_mask
+            print(f"✅ Using existing masks: train={self.data.train_mask.sum()}, "
+                  f"val={self.data.val_mask.sum()}, test={self.data.test_mask.sum()}")
+        else:
+            # Create default 60/20/20 split
+            num_nodes = self.num_papers
+            perm = torch.randperm(num_nodes)
+            train_size = int(0.6 * num_nodes)
+            val_size = int(0.2 * num_nodes)
+
+            train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+            val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+            test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+
+            train_mask[perm[:train_size]] = True
+            val_mask[perm[train_size:train_size+val_size]] = True
+            test_mask[perm[train_size+val_size:]] = True
+
+            hetero_data['paper'].train_mask = train_mask
+            hetero_data['paper'].val_mask = val_mask
+            hetero_data['paper'].test_mask = test_mask
+            print(f"✅ Created default masks (60/20/20): train={train_mask.sum()}, "
+                  f"val={val_mask.sum()}, test={test_mask.sum()}")
+
+        # Validate mask shapes match node count
+        assert hetero_data['paper'].train_mask.shape[0] == self.num_papers, \
+            f"train_mask size mismatch: {hetero_data['paper'].train_mask.shape[0]} != {self.num_papers}"
+        assert hetero_data['paper'].val_mask.shape[0] == self.num_papers, \
+            f"val_mask size mismatch: {hetero_data['paper'].val_mask.shape[0]} != {self.num_papers}"
+        assert hetero_data['paper'].test_mask.shape[0] == self.num_papers, \
+            f"test_mask size mismatch: {hetero_data['paper'].test_mask.shape[0]} != {self.num_papers}"
 
         # 2. Generate author nodes and edges
         author_data = self._generate_authors()
@@ -104,7 +137,73 @@ class HeterogeneousGraphBuilder:
         hetero_data.num_venues = self.num_venues
         hetero_data.num_topics = len(torch.unique(self.data.y))
 
+        # Validate before returning
+        if not self.validate(hetero_data):
+            raise ValueError("Heterogeneous graph validation failed")
+
         return hetero_data
+
+    def validate(self, hetero_data: HeteroData) -> bool:
+        """
+        Validate heterogeneous graph structure
+
+        Checks:
+        - Node features exist for all node types
+        - Node counts are positive
+        - Edge indices are within bounds
+        - Edge index shapes are correct
+
+        Args:
+            hetero_data: HeteroData object to validate
+
+        Returns:
+            True if validation passes, False otherwise
+        """
+        errors = []
+
+        # Check node counts and features
+        for node_type in hetero_data.node_types:
+            if not hasattr(hetero_data[node_type], 'x') or hetero_data[node_type].x is None:
+                errors.append(f"Missing features for node type: {node_type}")
+                continue
+
+            num_nodes = hetero_data[node_type].x.shape[0]
+            if num_nodes == 0:
+                errors.append(f"Zero nodes for type: {node_type}")
+
+        # Check edge indices
+        for edge_type in hetero_data.edge_types:
+            src_type, rel_type, dst_type = edge_type
+            edge_index = hetero_data[edge_type].edge_index
+
+            # Validate edge index shape
+            if edge_index.shape[0] != 2:
+                errors.append(f"Invalid edge_index shape for {edge_type}: {edge_index.shape}")
+                continue
+
+            # Validate indices are within bounds
+            if edge_index.shape[1] > 0:
+                src_max = edge_index[0].max().item()
+                dst_max = edge_index[1].max().item()
+
+                src_num_nodes = hetero_data[src_type].x.shape[0]
+                dst_num_nodes = hetero_data[dst_type].x.shape[0]
+
+                if src_max >= src_num_nodes:
+                    errors.append(f"Invalid source index in {edge_type}: "
+                                 f"{src_max} >= {src_num_nodes}")
+                if dst_max >= dst_num_nodes:
+                    errors.append(f"Invalid destination index in {edge_type}: "
+                                 f"{dst_max} >= {dst_num_nodes}")
+
+        if errors:
+            print("❌ Validation errors:")
+            for error in errors:
+                print(f"  - {error}")
+            return False
+
+        print("✅ Heterogeneous graph validation passed")
+        return True
 
     def _generate_authors(self) -> Dict:
         """Generate synthetic author nodes and authorship edges"""
@@ -140,6 +239,21 @@ class HeterogeneousGraphBuilder:
 
         paper_to_author = torch.tensor(paper_to_author, dtype=torch.long).t()
         author_to_paper = torch.tensor(author_to_paper, dtype=torch.long).t()
+
+        # Validation: Ensure all edge indices are within valid range
+        if paper_to_author.shape[1] > 0:
+            # Validate paper indices
+            max_paper_idx = paper_to_author[0].max().item()
+            assert max_paper_idx < self.num_papers, \
+                f"Invalid paper index in authorship: {max_paper_idx} >= {self.num_papers}"
+
+            # Validate author indices
+            max_author_idx = paper_to_author[1].max().item()
+            assert max_author_idx < num_unique_authors, \
+                f"Invalid author index: {max_author_idx} >= {num_unique_authors}"
+
+            print(f"✅ Author edge validation passed: {paper_to_author.shape[1]} edges, "
+                  f"papers [0-{max_paper_idx}], authors [0-{max_author_idx}]")
 
         return {
             'features': author_features,
@@ -195,6 +309,21 @@ class HeterogeneousGraphBuilder:
         paper_to_venue = torch.tensor(paper_to_venue, dtype=torch.long).t()
         venue_to_paper = torch.tensor(venue_to_paper, dtype=torch.long).t()
 
+        # Validation: Ensure all edge indices are within valid range
+        if paper_to_venue.shape[1] > 0:
+            # Validate paper indices
+            max_paper_idx = paper_to_venue[0].max().item()
+            assert max_paper_idx < self.num_papers, \
+                f"Invalid paper index in venue: {max_paper_idx} >= {self.num_papers}"
+
+            # Validate venue indices
+            max_venue_idx = paper_to_venue[1].max().item()
+            assert max_venue_idx < self.num_venues, \
+                f"Invalid venue index: {max_venue_idx} >= {self.num_venues}"
+
+            print(f"✅ Venue edge validation passed: {paper_to_venue.shape[1]} edges, "
+                  f"papers [0-{max_paper_idx}], venues [0-{max_venue_idx}]")
+
         return {
             'features': venue_features,
             'paper_to_venue': paper_to_venue,
@@ -223,6 +352,21 @@ class HeterogeneousGraphBuilder:
 
         paper_to_topic = torch.tensor(paper_to_topic, dtype=torch.long).t()
         topic_to_paper = torch.tensor(topic_to_paper, dtype=torch.long).t()
+
+        # Validation: Ensure all edge indices are within valid range
+        if paper_to_topic.shape[1] > 0:
+            # Validate paper indices
+            max_paper_idx = paper_to_topic[0].max().item()
+            assert max_paper_idx < self.num_papers, \
+                f"Invalid paper index in topic: {max_paper_idx} >= {self.num_papers}"
+
+            # Validate topic indices
+            max_topic_idx = paper_to_topic[1].max().item()
+            assert max_topic_idx < num_topics, \
+                f"Invalid topic index: {max_topic_idx} >= {num_topics}"
+
+            print(f"✅ Topic edge validation passed: {paper_to_topic.shape[1]} edges, "
+                  f"papers [0-{max_paper_idx}], topics [0-{max_topic_idx}]")
 
         return {
             'features': topic_features,

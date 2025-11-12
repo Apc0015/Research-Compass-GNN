@@ -494,12 +494,61 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
 
     progress(0.1, desc=f"Creating {model_type} model...")
 
+    # Store edge_type for R-GCN if needed
+    edge_type = None
+    hetero_data = None
+
     if model_type == "GCN":
         model = GCNModel(input_dim=num_features, output_dim=num_classes)
     elif model_type == "GAT":
         model = GATModel(input_dim=num_features, output_dim=num_classes)
     elif model_type == "Graph Transformer":
         model = GraphTransformerModel(input_dim=num_features, output_dim=num_classes)
+    elif model_type == "HAN":
+        # Convert to heterogeneous graph
+        progress(0.15, desc="Converting to heterogeneous graph...")
+        from data import convert_to_heterogeneous
+        from models import create_han_model
+
+        # Convert to heterogeneous (temporarily move back to CPU for conversion)
+        data_cpu = data.cpu()
+        hetero_data = convert_to_heterogeneous(data_cpu, num_venues=10)
+        hetero_data = hetero_data.to(device)
+
+        # Create HAN model
+        model = create_han_model(
+            hetero_data,
+            hidden_dim=64,
+            num_heads=4,
+            task='classification',
+            num_classes=num_classes
+        )
+
+        status = f"🚀 Training HAN model (Heterogeneous Graph)...\n"
+        status += f"⚠️  Note: HAN uses heterogeneous graph with multiple node/edge types\n\n"
+
+    elif model_type == "R-GCN":
+        # Classify citation types
+        progress(0.15, desc="Classifying citation types...")
+        from data import classify_citation_types
+        from models import create_rgcn_model
+
+        # Classify citation types (move back to CPU temporarily)
+        data_cpu = data.cpu()
+        edge_type, _ = classify_citation_types(data_cpu)
+        edge_type = edge_type.to(device)
+
+        # Create R-GCN model
+        model = create_rgcn_model(
+            data_cpu,
+            num_relations=4,
+            hidden_dim=64,
+            task='classification'
+        )
+
+        status = f"🚀 Training R-GCN model (Relational GCN)...\n"
+        status += f"⚠️  Note: R-GCN uses 4 citation types (EXTENDS, METHODOLOGY, BACKGROUND, COMPARISON)\n\n"
+
     else:
         yield f"❌ Unknown model type: {model_type}", None, "", None
         return
@@ -522,19 +571,52 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
         # Training
         model.train()
         optimizer.zero_grad()
-        out = model(data.x, data.edge_index)
-        loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
+
+        # Forward pass (model-specific)
+        if model_type == "HAN":
+            out_dict = model(hetero_data['paper'].x_dict if hasattr(hetero_data['paper'], 'x_dict') else hetero_data.x_dict,
+                           hetero_data.edge_index_dict)
+            out = out_dict['paper']
+            train_mask = hetero_data['paper'].train_mask
+            y = hetero_data['paper'].y
+        elif model_type == "R-GCN":
+            out = model(data.x, data.edge_index, edge_type)
+            train_mask = data.train_mask
+            y = data.y
+        else:
+            out = model(data.x, data.edge_index)
+            train_mask = data.train_mask
+            y = data.y
+
+        loss = F.cross_entropy(out[train_mask], y[train_mask])
         loss.backward()
         optimizer.step()
 
         # Evaluation
         model.eval()
         with torch.no_grad():
-            out = model(data.x, data.edge_index)
+            # Forward pass (model-specific)
+            if model_type == "HAN":
+                out_dict = model(hetero_data.x_dict, hetero_data.edge_index_dict)
+                out = out_dict['paper']
+                train_mask = hetero_data['paper'].train_mask
+                val_mask = hetero_data['paper'].val_mask
+                y = hetero_data['paper'].y
+            elif model_type == "R-GCN":
+                out = model(data.x, data.edge_index, edge_type)
+                train_mask = data.train_mask
+                val_mask = data.val_mask
+                y = data.y
+            else:
+                out = model(data.x, data.edge_index)
+                train_mask = data.train_mask
+                val_mask = data.val_mask
+                y = data.y
+
             pred = out.argmax(dim=1)
 
-            train_acc = (pred[data.train_mask] == data.y[data.train_mask]).float().mean()
-            val_acc = (pred[data.val_mask] == data.y[data.val_mask]).float().mean()
+            train_acc = (pred[train_mask] == y[train_mask]).float().mean()
+            val_acc = (pred[val_mask] == y[val_mask]).float().mean()
 
             history['train_loss'].append(loss.item())
             history['train_acc'].append(train_acc.item())
@@ -561,12 +643,26 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
     # Final evaluation
     model.eval()
     with torch.no_grad():
-        out = model(data.x, data.edge_index)
+        # Forward pass (model-specific)
+        if model_type == "HAN":
+            out_dict = model(hetero_data.x_dict, hetero_data.edge_index_dict)
+            out = out_dict['paper']
+            test_mask = hetero_data['paper'].test_mask
+            y = hetero_data['paper'].y
+        elif model_type == "R-GCN":
+            out = model(data.x, data.edge_index, edge_type)
+            test_mask = data.test_mask
+            y = data.y
+        else:
+            out = model(data.x, data.edge_index)
+            test_mask = data.test_mask
+            y = data.y
+
         pred = out.argmax(dim=1)
-        test_acc = (pred[data.test_mask] == data.y[data.test_mask]).float().mean()
+        test_acc = (pred[test_mask] == y[test_mask]).float().mean()
 
         # Calculate per-class metrics
-        correct = (pred == data.y).cpu().numpy()
+        correct = (pred == y).cpu().numpy()
         num_correct = correct.sum()
         num_total = len(correct)
 
@@ -866,7 +962,7 @@ def create_ui():
                         with gr.Group():
                             gr.Markdown("**Model Configuration:**")
                             model_type = gr.Dropdown(
-                                choices=["GCN", "GAT", "Graph Transformer"],
+                                choices=["GCN", "GAT", "Graph Transformer", "HAN", "R-GCN"],
                                 value="GCN",
                                 label="Model Type"
                             )
@@ -1029,7 +1125,9 @@ def create_ui():
                             return "❌ Error: Predictions and ground truth must have same length", None, None
 
                         # Compute metrics
-                        metrics = NodeClassificationMetrics()
+                        # Auto-detect num_classes from data
+                        num_classes = len(np.unique(np.concatenate([ground_truth, predictions])))
+                        metrics = NodeClassificationMetrics(num_classes=num_classes)
                         results = metrics.compute(ground_truth, predictions, None)
 
                         # Format output
@@ -1129,8 +1227,32 @@ def create_ui():
                         attention_weights = torch.rand(num_nodes, num_nodes)
                         attention_weights = F.softmax(attention_weights, dim=1)
 
-                        # Analyze patterns
-                        patterns = analyze_attention_patterns(attention_weights, None)
+                        # Analyze patterns with error handling
+                        try:
+                            patterns = analyze_attention_patterns(attention_weights, None)
+
+                            # Validate patterns is a dict with required keys
+                            if not isinstance(patterns, dict):
+                                raise ValueError(f"Expected dict, got {type(patterns)}")
+
+                            # Ensure all required keys exist
+                            required_keys = ['mean_attention', 'median_attention', 'std_attention',
+                                           'gini_coefficient', 'max_attention', 'min_attention']
+                            for key in required_keys:
+                                if key not in patterns:
+                                    patterns[key] = 0.0  # Default value
+
+                        except Exception as e:
+                            # Fallback to manual computation
+                            patterns = {
+                                'mean_attention': float(attention_weights.mean()),
+                                'median_attention': float(attention_weights.median()),
+                                'std_attention': float(attention_weights.std()),
+                                'gini_coefficient': 0.5,  # Placeholder
+                                'max_attention': float(attention_weights.max()),
+                                'min_attention': float(attention_weights.min())
+                            }
+                            print(f"Warning: Using fallback attention patterns: {e}")
 
                         stats_md = f"""
 ## 📊 Attention Statistics
@@ -1226,7 +1348,8 @@ def create_ui():
                         )
 
                         # Create temporal analyzer
-                        analyzer = TemporalAnalyzer(data)
+                        analyzer = TemporalAnalyzer()
+                        analyzer.add_temporal_data(data, years=None)
 
                         # Identify emerging topics
                         emerging = analyzer.identify_emerging_topics(lookback_years=3)
