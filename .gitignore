@@ -167,3 +167,4 @@ config/override.yaml
 # Backup files
 *.bak
 *.backup
+*.pid
