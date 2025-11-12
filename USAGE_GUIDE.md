@@ -1,6 +1,6 @@
-# Usage Guide - Research Compass GNN v2.0
+# Usage Guide - Research Compass GNN v3.0
 
-This guide covers how to use all features of the enhanced Research Compass GNN platform.
+This guide covers how to use all features of the enhanced Research Compass GNN platform, including **NEW: HAN and R-GCN models**.
 
 ---
 
@@ -10,9 +10,10 @@ This guide covers how to use all features of the enhanced Research Compass GNN p
 3. [Model Comparison](#model-comparison)
 4. [Attention Visualization](#attention-visualization)
 5. [Temporal Analysis](#temporal-analysis)
-6. [Ablation Studies](#ablation-studies)
-7. [Using Notebooks](#using-notebooks)
-8. [Gradio UI](#gradio-ui)
+6. **[Advanced GNN Models (HAN & R-GCN)](#advanced-gnn-models-han--r-gcn)** ⭐ NEW
+7. [Ablation Studies](#ablation-studies)
+8. [Using Notebooks](#using-notebooks)
+9. [Gradio UI](#gradio-ui)
 
 ---
 
@@ -297,6 +298,191 @@ report_path = generate_temporal_report(
 )
 
 print(f"Report: {report_path}")
+```
+
+---
+
+## Advanced GNN Models (HAN & R-GCN)
+
+### HAN (Heterogeneous Attention Network)
+
+Train on multi-relational graphs with multiple node and edge types.
+
+#### Convert to Heterogeneous Graph
+
+```python
+from torch_geometric.datasets import Planetoid
+from data import convert_to_heterogeneous
+
+# Load dataset
+data = Planetoid(root='/tmp/Cora', name='Cora')[0]
+
+# Convert to heterogeneous graph
+hetero_data = convert_to_heterogeneous(
+    data,
+    num_venues=15,               # Number of publication venues
+    num_authors_per_paper=(2, 4), # Average authors per paper
+    author_collaboration_prob=0.3, # Collaboration probability
+    venue_topic_correlation=0.7    # Topic-venue correlation
+)
+
+# View statistics
+print(f"Node types: {hetero_data.node_types}")
+print(f"Edge types: {len(hetero_data.edge_types)}")
+# Node types: ['paper', 'author', 'venue', 'topic']
+# Edge types: 7 (cites, written_by, published_in, belongs_to + reverse)
+```
+
+#### Train HAN Model
+
+```python
+from models import create_han_model
+from training.trainer import HANTrainer
+import torch.optim as optim
+
+# Create HAN model
+model = create_han_model(
+    hetero_data,
+    hidden_dim=128,
+    num_heads=8,
+    task='classification',
+    num_classes=7
+)
+
+print(f"Parameters: {model.count_parameters():,}")
+
+# Setup training
+optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+trainer = HANTrainer(
+    model, optimizer,
+    target_node_type='paper',
+    scheduler_config={'mode': 'max', 'factor': 0.5, 'patience': 5}
+)
+
+# Training loop
+for epoch in range(100):
+    train_metrics = trainer.train_epoch(hetero_data)
+    val_metrics = trainer.validate(hetero_data, return_attention=(epoch % 10 == 0))
+
+    trainer.step_scheduler(val_metrics['accuracy'])
+    is_best = trainer.save_best_model(val_metrics['accuracy'], epoch)
+
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch:3d} | "
+              f"Loss: {train_metrics['loss']:.4f} | "
+              f"Val Acc: {val_metrics['accuracy']:.4f} | "
+              f"LR: {train_metrics['lr']:.6f} "
+              f"{'🌟' if is_best else ''}")
+
+# Load best model
+trainer.load_best_model()
+print(f"Best epoch: {trainer.best_epoch}")
+
+# Get attention weights
+attention = trainer.get_attention_weights()
+if attention:
+    for node_type, attn in attention.items():
+        if attn is not None:
+            print(f"Attention for {node_type}: {attn.shape}")
+```
+
+### R-GCN (Relational GCN)
+
+Train on citation networks with typed relationships.
+
+#### Classify Citation Types
+
+```python
+from torch_geometric.datasets import Planetoid
+from data import classify_citation_types
+
+# Load dataset
+data = Planetoid(root='/tmp/Cora', name='Cora')[0]
+
+# Classify citations into 4 types
+edge_types, typed_edges = classify_citation_types(data)
+
+# View distribution
+# Citation Type Distribution:
+# EXTENDS       : 1234 (25.3%)
+# METHODOLOGY   :  856 (17.5%)
+# BACKGROUND    : 1789 (36.6%)
+# COMPARISON    : 1002 (20.5%)
+
+# Access typed edges
+extends_edges = typed_edges['extends']
+method_edges = typed_edges['methodology']
+background_edges = typed_edges['background']
+comparison_edges = typed_edges['comparison']
+```
+
+#### Train R-GCN Model
+
+```python
+from models import create_rgcn_model
+import torch.optim as optim
+import torch.nn.functional as F
+
+# Create R-GCN model
+model = create_rgcn_model(
+    data,
+    num_relations=4,      # 4 citation types
+    hidden_dim=128,
+    num_bases=30,         # Basis-decomposition for efficiency
+    task='classification'
+)
+
+print(f"Parameters: {model.count_parameters():,}")
+
+# Setup training
+optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+model = model.to(device)
+data = data.to(device)
+edge_types = edge_types.to(device)
+
+# Training loop
+for epoch in range(100):
+    # Train
+    model.train()
+    optimizer.zero_grad()
+    out = model(data.x, data.edge_index, edge_types)
+    loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
+    loss.backward()
+    optimizer.step()
+
+    # Validate
+    model.eval()
+    with torch.no_grad():
+        out = model(data.x, data.edge_index, edge_types)
+        pred = out[data.val_mask].argmax(dim=1)
+        val_acc = (pred == data.y[data.val_mask]).float().mean().item()
+
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch:3d} | Loss: {loss.item():.4f} | Val Acc: {val_acc:.4f}")
+
+# Test
+model.eval()
+with torch.no_grad():
+    out = model(data.x, data.edge_index, edge_types)
+    test_pred = out[data.test_mask].argmax(dim=1)
+    test_acc = (test_pred == data.y[data.test_mask]).float().mean().item()
+
+print(f"\nTest Accuracy: {test_acc:.4f} ({test_acc*100:.2f}%)")
+```
+
+#### Verify Implementations
+
+```bash
+# Run verification tests
+python verify_han.py    # Test HAN implementation
+python verify_rgcn.py   # Test R-GCN implementation
+
+# Expected output:
+# ======================================================================
+# ✅ ALL VERIFICATIONS PASSED - HAN IMPLEMENTATION COMPLETE
+# ======================================================================
 ```
 
 ---
