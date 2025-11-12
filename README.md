@@ -17,6 +17,8 @@ Research Compass GNN is a comprehensive platform for graph neural network resear
 
 - **6 GNN Models:** GCN, GAT, GraphSAGE, Graph Transformer, HAN, R-GCN
 - **Advanced Models:** Heterogeneous graphs (HAN) and relational graphs (R-GCN)
+- **Multi-Format Upload:** PDF, DOCX, TXT, HTML, XML, TAR, ZIP archives
+- **Web URL Support:** Download papers from arXiv, DOI, and other academic sources
 - **Comprehensive Evaluation:** Node classification, link prediction metrics
 - **Visualization Tools:** Attention weights, training curves, confusion matrices
 - **Temporal Analysis:** Citation trends and research evolution tracking
@@ -55,6 +57,18 @@ pip install pyg-lib torch-scatter torch-sparse -f https://data.pyg.org/whl/torch
 ```bash
 python scripts/launcher.py
 # Access at http://localhost:7860
+```
+
+**Supported Upload Formats:**
+- **Documents:** PDF, DOCX, TXT, Markdown, HTML, XML
+- **Archives:** TAR, TAR.GZ, ZIP (batch upload multiple papers)
+- **URLs:** arXiv links, DOI URLs, direct PDF downloads
+
+**Example URLs:**
+```
+https://arxiv.org/abs/1706.03762
+https://arxiv.org/pdf/2010.11929.pdf
+10.1145/3292500.3330989
 ```
 
 **2. Train Single Model**
@@ -138,7 +152,8 @@ Research-Compass-GNN/
 ├── data/                    # Data processing utilities
 │   ├── dataset_utils.py    # Dataset loading and preprocessing
 │   ├── heterogeneous_graph_builder.py  # HAN graph construction
-│   └── citation_type_classifier.py     # R-GCN edge typing
+│   ├── citation_type_classifier.py     # R-GCN edge typing
+│   └── multi_format_processor.py       # Multi-format document processing
 │
 ├── training/                # Training infrastructure
 │   ├── trainer.py          # Base and specialized trainers
@@ -175,7 +190,12 @@ Research-Compass-GNN/
 ├── docs/                    # Documentation
 │   ├── ARCHITECTURE.md     # System architecture
 │   ├── USAGE_GUIDE.md      # Usage instructions
-│   └── ENHANCEMENTS.md     # Feature changelog
+│   ├── ENHANCEMENTS.md     # Feature changelog
+│   ├── MULTI_FORMAT_UPLOAD.md  # Multi-format upload guide
+│   └── QUICK_REFERENCE_UPLOAD.md  # Quick reference guide
+│
+├── examples/                # Example scripts
+│   └── demo_multi_format_upload.py  # Multi-format upload demo
 │
 ├── notebooks/               # Jupyter notebooks
 │   └── real_dataset_benchmark.ipynb  # Benchmark notebook
@@ -400,19 +420,33 @@ python scripts/launcher.py
 ```
 
 **Available Tabs:**
-1. **Real Data Training** - Train models on real citation networks
+1. **Real Data Training** - Train models on real citation networks with multi-format upload
 2. **Evaluation Metrics** - Comprehensive metrics analysis
 3. **Attention Visualization** - Attention weight heatmaps
 4. **Temporal Analysis** - Citation trends and evolution
 5. **About** - Project information
 
-**Features:**
+**Upload Features:**
+- **Multiple Formats:** PDF, DOCX, TXT, Markdown, HTML, XML
+- **Batch Upload:** TAR, TAR.GZ, ZIP archives containing multiple papers
+- **Web URLs:** Direct download from arXiv, DOI resolvers, and academic repositories
+- **Mixed Input:** Combine uploaded files and URLs in a single session
+
+**Training Features:**
 - Interactive model selection (GCN, GAT, GraphTransformer, HAN, R-GCN)
 - Real-time training progress
 - Live accuracy curves
 - Confusion matrix visualization
 - Attention pattern analysis
 - Temporal trend charts
+
+**Supported URL Sources:**
+- arXiv.org (abstracts and PDFs)
+- DOI resolvers (doi.org, dx.doi.org)
+- ACL Anthology
+- OpenReview.net
+- NeurIPS/ICML proceedings
+- Direct PDF links
 
 ---
 
@@ -421,6 +455,26 @@ python scripts/launcher.py
 All settings centralized in `config.yaml`:
 
 ```yaml
+# Upload configuration
+upload:
+  formats:
+    pdf: ['.pdf']
+    text: ['.txt', '.md', '.text']
+    docx: ['.docx', '.doc']
+    html: ['.html', '.htm']
+    xml: ['.xml']
+    archive: ['.tar', '.tar.gz', '.tgz', '.zip']
+  
+  max_file_size: 104857600  # 100MB
+  max_archive_files: 200
+  
+  allowed_domains:
+    - 'arxiv.org'
+    - 'doi.org'
+    - 'aclanthology.org'
+    - 'openreview.net'
+
+# Model configuration
 models:
   gcn:
     hidden_dim: 128
@@ -466,6 +520,108 @@ Modify `config.yaml` to customize behavior without code changes.
 
 ---
 
+## 📤 Multi-Format Upload Guide
+
+### Supported File Formats
+
+| Format | Extensions | Description |
+|--------|------------|-------------|
+| **PDF** | `.pdf` | Research papers in PDF format |
+| **Text** | `.txt`, `.md`, `.text` | Plain text and Markdown documents |
+| **Word** | `.docx`, `.doc` | Microsoft Word documents |
+| **Web** | `.html`, `.htm` | HTML documents |
+| **XML** | `.xml` | XML formatted documents |
+| **Archives** | `.tar`, `.tar.gz`, `.tgz`, `.zip` | Compressed archives (batch upload) |
+
+### URL Download Support
+
+**Supported Sources:**
+- **arXiv:** `https://arxiv.org/abs/1706.03762` or `https://arxiv.org/pdf/2010.11929.pdf`
+- **DOI:** `https://doi.org/10.1145/3292500.3330989` or `10.1145/3292500.3330989`
+- **Direct PDFs:** Any direct link to PDF files from trusted domains
+- **Academic Sites:** ACL Anthology, OpenReview, NeurIPS/ICML proceedings
+
+**URL Input Formats:**
+```
+# One per line
+https://arxiv.org/abs/1706.03762
+https://arxiv.org/pdf/2010.11929.pdf
+
+# Comma-separated
+https://arxiv.org/abs/1706.03762, https://arxiv.org/pdf/2010.11929.pdf
+
+# DOI format
+10.1145/3292500.3330989
+doi.org/10.1145/3292500.3330989
+```
+
+### Archive Upload (Batch Processing)
+
+Upload TAR, TAR.GZ, or ZIP archives containing multiple papers:
+
+**Example Archive Structure:**
+```
+papers.tar.gz
+├── paper1.pdf
+├── paper2.pdf
+├── paper3.docx
+├── subfolder/
+│   ├── paper4.pdf
+│   └── paper5.txt
+└── paper6.html
+```
+
+**Features:**
+- Automatically extracts all supported files
+- Maintains folder structure metadata
+- Limits: 200 files per archive, 100MB max file size
+- Supports nested archives
+
+### Usage Examples
+
+**Example 1: Upload Mixed Formats**
+1. Upload: `paper1.pdf`, `paper2.docx`, `notes.txt`
+2. Click "Process Papers & Build Graph"
+3. System automatically detects formats and extracts text
+
+**Example 2: Download from arXiv**
+1. Enter URLs in text box:
+   ```
+   https://arxiv.org/abs/1706.03762
+   https://arxiv.org/abs/2010.11929
+   ```
+2. Click "Process Papers & Build Graph"
+3. Papers are downloaded, metadata extracted, and graph built
+
+**Example 3: Batch Upload with Archive**
+1. Create `papers.zip` with 10 PDF files
+2. Upload `papers.zip`
+3. System extracts all PDFs and processes them
+
+**Example 4: Combined Upload**
+1. Upload files: `local_paper.pdf`, `papers.tar.gz`
+2. Add URLs: `https://arxiv.org/abs/1706.03762`
+3. Process all together in one graph
+
+### Configuration
+
+Customize upload settings in `config.yaml`:
+
+```yaml
+upload:
+  max_file_size: 104857600      # 100MB per file
+  max_archive_files: 200        # Max files per archive
+  download_timeout: 30          # URL download timeout (seconds)
+  
+  allowed_domains:
+    - 'arxiv.org'
+    - 'doi.org'
+    - 'aclanthology.org'
+    - 'openreview.net'
+```
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -479,6 +635,12 @@ python tests/verify_rgcn.py
 # ✅ Training step: PASSED
 # ✅ Validation: PASSED
 # ✅ Attention weights: PASSED
+
+# Run multi-format upload demo
+python examples/demo_multi_format_upload.py
+
+# Test multi-format processing
+# Shows: Text extraction, URL detection, supported formats
 ```
 
 ---
@@ -488,6 +650,8 @@ python tests/verify_rgcn.py
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design and model architectures
 - **[USAGE_GUIDE.md](docs/USAGE_GUIDE.md)** - Detailed usage instructions
 - **[ENHANCEMENTS.md](docs/ENHANCEMENTS.md)** - Feature changelog
+- **[MULTI_FORMAT_UPLOAD.md](docs/MULTI_FORMAT_UPLOAD.md)** - Complete multi-format upload guide
+- **[QUICK_REFERENCE_UPLOAD.md](docs/QUICK_REFERENCE_UPLOAD.md)** - Quick reference for uploads
 
 ---
 
@@ -512,6 +676,26 @@ python scripts/train_enhanced.py --model GCN --minibatch --batch_size 32
 # Ensure config.yaml is in project root
 from config import load_config
 load_config('path/to/config.yaml')
+```
+
+**4. URL Download Fails**
+```bash
+# Check internet connection
+# Verify URL is from allowed domain (see config.yaml)
+# Try direct arXiv PDF link instead of abstract page
+```
+
+**5. Archive Extraction Fails**
+```bash
+# Check archive contains < 200 files
+# Verify archive is not corrupted
+# Check individual files are < 100MB
+```
+
+**6. DOCX Support Missing**
+```bash
+# Install python-docx if not already installed
+pip install python-docx
 ```
 
 ---

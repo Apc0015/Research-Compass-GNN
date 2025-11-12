@@ -238,6 +238,39 @@ analysis:
       - "mlp"
 
 # ============================================================================
+# Upload Configuration
+# ============================================================================
+upload:
+  # Supported file formats
+  formats:
+    pdf: ['.pdf']
+    text: ['.txt', '.md', '.text']
+    docx: ['.docx', '.doc']
+    html: ['.html', '.htm']
+    xml: ['.xml']
+    archive: ['.tar', '.tar.gz', '.tgz', '.zip']
+
+  # File size limits
+  max_file_size: 104857600  # 100MB in bytes
+  max_archive_files: 200    # Max files to extract from archive
+
+  # URL download settings
+  allowed_domains:
+    - 'arxiv.org'
+    - 'doi.org'
+    - 'dx.doi.org'
+    - 'aclanthology.org'
+    - 'openreview.net'
+    - 'proceedings.mlr.press'
+    - 'papers.nips.cc'
+    - 'proceedings.neurips.cc'
+
+  download_timeout: 30  # seconds
+
+  # Temporary directory for downloads
+  temp_dir: "./tmp/uploads"
+
+# ============================================================================
 # Device Configuration
 # ============================================================================
 device:

@@ -35,6 +35,13 @@ from evaluation.visualizations import MetricsVisualizer
 from visualization.attention_viz import AttentionVisualizer, analyze_attention_patterns
 from analysis.temporal_analysis import TemporalAnalyzer
 
+# Import multi-format processor
+from data.multi_format_processor import (
+    process_multi_format_input,
+    get_supported_extensions,
+    extract_text_from_file
+)
+
 # ============================================================================
 # GNN MODEL DEFINITIONS (Using enhanced models from models/ directory)
 # ============================================================================
@@ -377,73 +384,32 @@ def create_interactive_graph(graph_data, predictions=None, attention_weights=Non
 # REAL DATA TRAINING TAB FUNCTIONS
 # ============================================================================
 
-def process_pdfs(files, extract_citations, build_graph, extract_metadata):
-    """Process uploaded PDF files and create initial graph visualization"""
-    if not files or len(files) == 0:
-        return "⚠️ No files uploaded", "", None, None
-
-    status = f"🔄 Processing {len(files)} PDF files...\n\n"
-    papers_data = []
-
-    for idx, file in enumerate(files):
-        # Safely resolve filename from different upload types
-        if hasattr(file, 'name'):
-            filename = file.name
-        elif isinstance(file, dict) and 'name' in file:
-            filename = file['name']
-        else:
-            filename = f"uploaded_{idx}.pdf"
-
-        status += f"📄 Processing file {idx+1}/{len(files)}: {filename}\n"
-
-        # Prepare file for extract_text_from_pdf
-        # Handle bytes, bytearray, file-like objects, and dict-shaped uploads
-        if isinstance(file, (bytes, bytearray)):
-            pdf_input = file
-        elif isinstance(file, dict):
-            # Gradio sometimes sends dict with 'data' or 'path' keys
-            if 'data' in file:
-                pdf_input = file['data']
-            elif 'path' in file:
-                with open(file['path'], 'rb') as f:
-                    pdf_input = f.read()
-            else:
-                pdf_input = file
-        elif hasattr(file, 'read'):
-            # File-like object
-            pdf_input = file
-        else:
-            pdf_input = file
-
-        # Extract text
-        text = extract_text_from_pdf(pdf_input)
-
-        paper_info = {
-            'name': filename,
-            'text': text[:1000],  # First 1000 chars
-            'citations': [],
-            'metadata': {}
-        }
-
-        # Extract citations if enabled
-        if extract_citations:
-            citations = extract_citations_simple(text)
-            paper_info['citations'] = citations
-            status += f"   Found {len(citations)} citations\n"
-
-        # Extract metadata if enabled
-        if extract_metadata:
-            # Placeholder - can be enhanced
-            paper_info['metadata'] = {
-                'length': len(text),
-                'word_count': len(text.split())
-            }
-
-        papers_data.append(paper_info)
-        app_state.paper_list.append(filename)
-
-    status += f"\n✅ Processed {len(papers_data)} papers successfully!\n"
-
+def process_pdfs(files, urls_text, extract_citations, build_graph, extract_metadata):
+    """Process uploaded files and URLs, create initial graph visualization"""
+    
+    # Parse URLs from text input
+    urls = None
+    if urls_text and urls_text.strip():
+        urls = [urls_text]  # Will be parsed inside process_multi_format_input
+    
+    # Check if we have any input
+    if (not files or len(files) == 0) and not urls:
+        return "⚠️ No files or URLs provided", "", None, None
+    
+    # Use multi-format processor
+    papers_data, status = process_multi_format_input(
+        files=files,
+        urls=urls,
+        extract_citations=extract_citations,
+        max_archive_files=200
+    )
+    
+    if not papers_data:
+        return status + "\n❌ No papers were successfully processed", "", None, None
+    
+    # Store paper list
+    app_state.paper_list = [paper['name'] for paper in papers_data]
+    
     # Build graph if enabled
     graph_stats = ""
     initial_graph = None
@@ -896,24 +862,31 @@ def create_ui():
                 gr.Markdown("""
                 ## 🎨 Real Data Training with LIVE Interactive Graph Visualization
 
-                Upload PDFs → Build Citation Network → Train GNN → Watch Live Updates!
+                Upload files (PDF, DOCX, TXT, HTML, XML, TAR, ZIP) → Add URLs → Build Citation Network → Train GNN → Watch Live Updates!
                 """)
 
                 with gr.Row():
-                    # LEFT SECTION: PDF Upload & Processing
+                    # LEFT SECTION: File Upload, URL Input & Processing
                     with gr.Column(scale=1):
-                        gr.Markdown("### 📤 PDF Upload & Processing")
+                        gr.Markdown("### 📤 Multi-Format Upload & URL Input")
 
                         file_upload = gr.File(
-                            label="Upload PDF Files",
+                            label="Upload Files (PDF, DOCX, TXT, HTML, XML, TAR, ZIP)",
                             file_count="multiple",
-                            file_types=[".pdf"],
+                            file_types=[".pdf", ".txt", ".md", ".docx", ".doc", ".html", ".htm", ".xml", ".tar", ".tar.gz", ".tgz", ".zip"],
                             type="binary"
+                        )
+
+                        url_input = gr.Textbox(
+                            label="📎 Paper URLs (one per line or comma-separated)",
+                            placeholder="https://arxiv.org/abs/1706.03762\nhttps://arxiv.org/pdf/2010.11929.pdf\n10.1145/3292500.3330989",
+                            lines=4,
+                            info="Supports: arXiv links, DOI URLs, direct PDF links"
                         )
 
                         with gr.Group():
                             gr.Markdown("**Processing Options:**")
-                            extract_citations_cb = gr.Checkbox(label="Extract citations from PDFs", value=True)
+                            extract_citations_cb = gr.Checkbox(label="Extract citations from documents", value=True)
                             build_graph_cb = gr.Checkbox(label="Build knowledge graph automatically", value=True)
                             extract_metadata_cb = gr.Checkbox(label="Extract metadata (authors, year, venue)", value=True)
 
@@ -1017,7 +990,7 @@ def create_ui():
                 # Connect buttons to functions
                 process_button.click(
                     fn=process_pdfs,
-                    inputs=[file_upload, extract_citations_cb, build_graph_cb, extract_metadata_cb],
+                    inputs=[file_upload, url_input, extract_citations_cb, build_graph_cb, extract_metadata_cb],
                     outputs=[processing_status, graph_stats, paper_select, graph_viz]
                 )
 
