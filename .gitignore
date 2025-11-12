@@ -152,6 +152,10 @@ models/*.pt
 models/*.pth
 models/*.bin
 models/*.h5
+*.pt
+*.pth
+*.bin
+*.h5
 
 # Cache directories
 .cache/
@@ -168,3 +172,19 @@ config/override.yaml
 *.bak
 *.backup
 *.pid
+
+# Results and experiments
+results/
+experiments/results/
+ablation_results/
+comparison_results/
+
+# Downloaded datasets
+data/Cora/
+data/CiteSeer/
+data/PubMed/
+data/Planetoid/
+
+# Checkpoints
+checkpoints/
+*.ckpt
