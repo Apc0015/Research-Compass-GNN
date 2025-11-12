@@ -31,7 +31,7 @@ jupyter notebook real_dataset_benchmark.ipynb
 **Expected Results:** 70-82% accuracy on citation network classification tasks, comparable to published benchmarks.
 
 ### 2. Interactive Gradio UI with Real Data Training
-**File:** `launcher.py`
+**File:** `scripts/launcher.py`
 
 A professional web interface for training GNNs on your own research papers:
 
@@ -106,16 +106,24 @@ jupyter notebook real_dataset_benchmark.ipynb
 pip install -r requirements.txt
 
 # Launch web interface
-python launcher.py
+python scripts/launcher.py
 
 # Open browser to http://localhost:7860
 ```
 
-### Option 3: Run Existing Comparison Study
+### Option 3: Run Model Comparison
 ```bash
-# Train models on synthetic citation network
-python comparison_study.py 200 50
-# Arguments: [num_papers] [epochs]
+# Compare all GNN models
+python scripts/compare_all_models.py --dataset Cora
+```
+
+### Option 4: Run Verification Tests
+```bash
+# Verify HAN implementation
+python tests/verify_han.py
+
+# Verify R-GCN implementation
+python tests/verify_rgcn.py
 ```
 
 ## Prerequisites
@@ -372,41 +380,71 @@ CACHE_DIR=data/cache
 
 ---
 
-## Project Structure- **Graph Neural Networks**: Advanced GNN models for node classification, link prediction
-
-- **Temporal Analysis**: Research evolution tracking and trend prediction
-
-## Project Structure- **Neural Recommendations**: GNN-based personalized paper suggestions
-
-- **Graph Search**: Semantic + structural search with graph context
+## 📂 Project Structure
 
 ```
-
-Research Compass/### 📚 **Document Processing**
-
-├── launcher.py           # Main application launcher- **Multi-Format Support**: PDF, DOCX, TXT, Markdown processing
-
-├── requirements.txt      # Python dependencies- **Knowledge Graph Construction**: Automated entity and relationship extraction
-
-├── config/              # Configuration files- **Batch Processing**: Handle multiple files simultaneously
-
-├── src/graphrag/        # Core system- **Web URL Import**: Direct processing from arXiv and other sources
-
-│   ├── core/           # System core
-
-│   ├── analytics/      # Analytics modules### 🎨 **Visualization & Analytics**
-
-│   ├── ml/             # Machine learning & GNN- **Interactive Networks**: Clickable citation and collaboration graphs
-
-│   ├── ui/             # User interface- **Attention Visualization**: See how GNN models make decisions
-
-│   └── visualization/  # Graph visualization- **Citation Analysis**: Disruption index, sleeping beauty detection
-
-├── data/               # Data storage- **Temporal Charts**: Research trends over time
-
-├── models/             # Trained models
-
-└── tests/              # Unit tests
+Research-Compass-GNN/
+├── scripts/                 # Executable scripts
+│   ├── launcher.py         # Gradio UI application
+│   ├── train_enhanced.py   # Enhanced training script
+│   └── compare_all_models.py  # Model comparison
+│
+├── models/                  # GNN model implementations
+│   ├── gcn.py              # Graph Convolutional Network
+│   ├── gat.py              # Graph Attention Network
+│   ├── graphsage.py        # GraphSAGE
+│   ├── graph_transformer.py # Graph Transformer
+│   ├── han.py              # Heterogeneous Attention Network
+│   └── rgcn.py             # Relational GCN
+│
+├── data/                    # Data processing utilities
+│   ├── dataset_utils.py    # Dataset loading and preprocessing
+│   ├── heterogeneous_graph_builder.py  # HAN graph construction
+│   └── citation_type_classifier.py     # R-GCN edge typing
+│
+├── training/                # Training infrastructure
+│   ├── trainer.py          # Base and specialized trainers
+│   └── batch_training.py   # Mini-batch training
+│
+├── evaluation/              # Evaluation metrics
+│   ├── metrics.py          # Node classification, link prediction
+│   └── visualizations.py   # Performance plots
+│
+├── visualization/           # Visualization tools
+│   └── attention_viz.py    # Attention weight analysis
+│
+├── analysis/                # Advanced analysis
+│   └── temporal_analysis.py  # Citation trend analysis
+│
+├── baselines/               # Baseline models
+│   ├── traditional_ml.py   # Logistic, RF, MLP
+│   └── graph_baselines.py  # Label Propagation, Node2Vec
+│
+├── experiments/             # Research experiments
+│   └── ablation_studies.py # Ablation study framework
+│
+├── config/                  # Configuration management
+│   └── settings.py         # YAML config loader
+│
+├── utils/                   # Utility functions
+│   ├── logger.py           # Training logger
+│   └── checkpoint.py       # Model checkpointing
+│
+├── tests/                   # Test suite
+│   ├── verify_han.py       # HAN verification
+│   └── verify_rgcn.py      # R-GCN verification
+│
+├── docs/                    # Documentation
+│   ├── ARCHITECTURE.md     # System architecture
+│   ├── USAGE_GUIDE.md      # Usage instructions
+│   └── ENHANCEMENTS.md     # Feature changelog
+│
+├── notebooks/               # Jupyter notebooks
+│   └── real_dataset_benchmark.ipynb  # Benchmark notebook
+│
+├── config.yaml              # Main configuration file
+├── requirements.txt         # Python dependencies
+└── README.md                # This file
 ```
 
 ---

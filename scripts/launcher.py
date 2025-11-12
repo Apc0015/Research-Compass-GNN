@@ -4,6 +4,11 @@ Research Compass GNN - Launcher
 Main Gradio application with Real Data Training capabilities
 """
 
+import sys
+from pathlib import Path
+# Add parent directory to path to import project modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import gradio as gr
 import torch
 import torch.nn.functional as F
