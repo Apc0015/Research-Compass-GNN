@@ -11,7 +11,6 @@ Demonstrates Phase 1 enhancements:
 Usage:
     python train_enhanced.py --model GCN --dataset synthetic --epochs 100
     python train_enhanced.py --model GAT --multitask --dataset Cora --epochs 50
-    python train_enhanced.py --model GraphSAGE --dataset synthetic --size 5000 --minibatch
 """
 
 import sys
@@ -27,7 +26,7 @@ import time
 import json
 
 # Import our modules
-from models import GCNModel, GATModel, GraphSAGEModel, GraphTransformerModel
+from models import GCNModel, GATModel
 from training.trainer import GCNTrainer, MultiTaskGATTrainer
 from training.batch_training import create_trainer
 from evaluation.metrics import NodeClassificationMetrics, LinkPredictionMetrics
@@ -46,7 +45,7 @@ def parse_args():
 
     # Model selection
     parser.add_argument('--model', type=str, default='GCN',
-                        choices=['GCN', 'GAT', 'GraphSAGE', 'Transformer'],
+                        choices=['GCN', 'GAT'],
                         help='Model architecture')
 
     # Dataset selection

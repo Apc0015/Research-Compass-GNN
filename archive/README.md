@@ -1,59 +1,74 @@
 # Archive
 
-This directory contains documentation and materials from earlier versions of the project.
+This directory contains advanced features and models that have been archived to simplify the main interface.
 
-## Contents
+## Archived Models
 
-### `TECHNICAL_REPORT.md`
-Original technical report for the project (v1.0).
+The following GNN models have been moved here to focus on core functionality:
 
-**Status:** Archived - refers to original implementation before v2.0 enhancements.
+### Models (`models/`)
+- **han.py** - Heterogeneous Attention Network (HAN)
+  - Multi-relational graphs with hierarchical attention
+  - 4 node types, 7 edge types
+  
+- **rgcn.py** - Relational Graph Convolutional Network (R-GCN)
+  - Citation type-aware convolutions
+  - 4 citation types: EXTENDS, METHODOLOGY, BACKGROUND, COMPARISON
+  
+- **graphsage.py** - GraphSAGE
+  - Inductive learning with neighbor sampling
+  
+- **graph_transformer.py** - Graph Transformer
+  - Full attention mechanism over graph structure
 
-**Note:** For current documentation, see:
-- `../ENHANCEMENTS.md` - v2.0 features
-- `../ARCHITECTURE.md` - Current system design
+## Archived Data Processing
 
-### `PRESENTATION_SLIDES.md`
-Original presentation slides for the project.
+### Data Features
+- **citation_type_classifier.py** - Classifies citation relationships into 4 types
+- **heterogeneous_graph_builder.py** - Converts homogeneous graphs to heterogeneous representations
 
-**Status:** Archived - refers to original implementation.
+### Test Files
+- **verify_han.py** - HAN model verification tests
+- **verify_rgcn.py** - R-GCN model verification tests
 
 ## Why Archived?
 
-These documents were written for the original version (v1.0) which had:
-- 3 basic GNN models
-- Simple accuracy metrics
-- No baseline comparisons
-- No advanced features
+These advanced features were archived to:
+1. **Simplify the UI** - Focus on core GCN and GAT models
+2. **Reduce complexity** - Remove dependencies on heterogeneous and relational graph features
+3. **Improve maintainability** - Easier to understand and extend core functionality
+4. **Better user experience** - Clearer interface for most use cases
 
-The project has been significantly enhanced in v2.0 with:
-- 4 advanced GNN models
-- Multi-task learning
-- Comprehensive evaluation suite
-- 6 baseline methods
-- Advanced visualization
-- Ablation studies
-- Professional documentation
+## Using Archived Models
 
-## Historical Value
+If you need these advanced features, they can still be used by:
 
-These documents are preserved for:
-- Historical reference
-- Understanding project evolution
-- Academic record
-- Comparison with v2.0
+1. **Importing from archive:**
+   ```python
+   import sys
+   sys.path.insert(0, 'archive/models')
+   from han import HANModel, create_han_model
+   from rgcn import RGCNModel, create_rgcn_model
+   ```
 
-## Current Documentation
+2. **Moving back to main directory:**
+   ```bash
+   cp archive/models/han.py models/
+   # Update models/__init__.py to include imports
+   ```
 
-For up-to-date information, please see:
+3. **Updating configuration:**
+   - Add model choices back to `scripts/launcher.py`
+   - Update model selection logic in training functions
 
-**Main Documentation:**
-- `../README.md` - Project overview
-- `../ENHANCEMENTS.md` - v2.0 features and improvements
-- `../ARCHITECTURE.md` - System design and architecture
-- `../USAGE_GUIDE.md` - How to use v2.0
+## Archived Date
 
-**Code Documentation:**
-- Comprehensive docstrings in all modules
-- Type hints throughout
-- Usage examples in each file
+November 12, 2025
+
+## Original Features
+
+All archived features were fully functional and tested. They represent advanced GNN capabilities for:
+- Multi-relational citation networks
+- Citation type analysis
+- Inductive learning scenarios
+- Full graph attention mechanisms

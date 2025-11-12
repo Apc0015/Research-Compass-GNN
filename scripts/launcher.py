@@ -13,7 +13,7 @@ import gradio as gr
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data
-from torch_geometric.nn import GCNConv, GATConv, TransformerConv
+from torch_geometric.nn import GCNConv, GATConv
 import torch.nn as nn
 import numpy as np
 import pandas as pd
@@ -81,27 +81,6 @@ class GATModel(nn.Module):
         for i, conv in enumerate(self.convs[:-1]):
             x = conv(x, edge_index)
             x = F.elu(x)
-        x = self.convs[-1](x, edge_index)
-        return x
-
-
-class GraphTransformerModel(nn.Module):
-    """Graph Transformer for Node Classification"""
-    def __init__(self, input_dim=384, hidden_dim=128, output_dim=5, num_layers=2, num_heads=4, dropout=0.1):
-        super().__init__()
-        self.convs = nn.ModuleList()
-        self.convs.append(TransformerConv(input_dim, hidden_dim, heads=num_heads, dropout=dropout, concat=True))
-        for _ in range(num_layers - 2):
-            self.convs.append(TransformerConv(hidden_dim * num_heads, hidden_dim, heads=num_heads, dropout=dropout, concat=True))
-        if num_layers > 1:
-            self.convs.append(TransformerConv(hidden_dim * num_heads, output_dim, heads=1, dropout=dropout, concat=False))
-        else:
-            self.convs.append(TransformerConv(input_dim, output_dim, heads=1, dropout=dropout, concat=False))
-
-    def forward(self, x, edge_index):
-        for i, conv in enumerate(self.convs[:-1]):
-            x = conv(x, edge_index)
-            x = F.relu(x)
         x = self.convs[-1](x, edge_index)
         return x
 
@@ -473,53 +452,6 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
         model = GCNModel(input_dim=num_features, output_dim=num_classes)
     elif model_type == "GAT":
         model = GATModel(input_dim=num_features, output_dim=num_classes)
-    elif model_type == "Graph Transformer":
-        model = GraphTransformerModel(input_dim=num_features, output_dim=num_classes)
-    elif model_type == "HAN":
-        # Convert to heterogeneous graph
-        progress(0.15, desc="Converting to heterogeneous graph...")
-        from data import convert_to_heterogeneous
-        from models import create_han_model
-
-        # Convert to heterogeneous (temporarily move back to CPU for conversion)
-        data_cpu = data.cpu()
-        hetero_data = convert_to_heterogeneous(data_cpu, num_venues=10)
-        hetero_data = hetero_data.to(device)
-
-        # Create HAN model
-        model = create_han_model(
-            hetero_data,
-            hidden_dim=64,
-            num_heads=4,
-            task='classification',
-            num_classes=num_classes
-        )
-
-        status = f"🚀 Training HAN model (Heterogeneous Graph)...\n"
-        status += f"⚠️  Note: HAN uses heterogeneous graph with multiple node/edge types\n\n"
-
-    elif model_type == "R-GCN":
-        # Classify citation types
-        progress(0.15, desc="Classifying citation types...")
-        from data import classify_citation_types
-        from models import create_rgcn_model
-
-        # Classify citation types (move back to CPU temporarily)
-        data_cpu = data.cpu()
-        edge_type, _ = classify_citation_types(data_cpu)
-        edge_type = edge_type.to(device)
-
-        # Create R-GCN model
-        model = create_rgcn_model(
-            data_cpu,
-            num_relations=4,
-            hidden_dim=64,
-            task='classification'
-        )
-
-        status = f"🚀 Training R-GCN model (Relational GCN)...\n"
-        status += f"⚠️  Note: R-GCN uses 4 citation types (EXTENDS, METHODOLOGY, BACKGROUND, COMPARISON)\n\n"
-
     else:
         yield f"❌ Unknown model type: {model_type}", None, "", None
         return
@@ -543,21 +475,10 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
         model.train()
         optimizer.zero_grad()
 
-        # Forward pass (model-specific)
-        if model_type == "HAN":
-            out_dict = model(hetero_data['paper'].x_dict if hasattr(hetero_data['paper'], 'x_dict') else hetero_data.x_dict,
-                           hetero_data.edge_index_dict)
-            out = out_dict['paper']
-            train_mask = hetero_data['paper'].train_mask
-            y = hetero_data['paper'].y
-        elif model_type == "R-GCN":
-            out = model(data.x, data.edge_index, edge_type)
-            train_mask = data.train_mask
-            y = data.y
-        else:
-            out = model(data.x, data.edge_index)
-            train_mask = data.train_mask
-            y = data.y
+        # Forward pass
+        out = model(data.x, data.edge_index)
+        train_mask = data.train_mask
+        y = data.y
 
         loss = F.cross_entropy(out[train_mask], y[train_mask])
         loss.backward()
@@ -566,23 +487,11 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
         # Evaluation
         model.eval()
         with torch.no_grad():
-            # Forward pass (model-specific)
-            if model_type == "HAN":
-                out_dict = model(hetero_data.x_dict, hetero_data.edge_index_dict)
-                out = out_dict['paper']
-                train_mask = hetero_data['paper'].train_mask
-                val_mask = hetero_data['paper'].val_mask
-                y = hetero_data['paper'].y
-            elif model_type == "R-GCN":
-                out = model(data.x, data.edge_index, edge_type)
-                train_mask = data.train_mask
-                val_mask = data.val_mask
-                y = data.y
-            else:
-                out = model(data.x, data.edge_index)
-                train_mask = data.train_mask
-                val_mask = data.val_mask
-                y = data.y
+            # Forward pass
+            out = model(data.x, data.edge_index)
+            train_mask = data.train_mask
+            val_mask = data.val_mask
+            y = data.y
 
             pred = out.argmax(dim=1)
 
@@ -902,9 +811,10 @@ def create_ui():
                         with gr.Group():
                             gr.Markdown("**Model Configuration:**")
                             model_type = gr.Dropdown(
-                                choices=["GCN", "GAT", "Graph Transformer", "HAN", "R-GCN"],
+                                choices=["GCN", "GAT"],
                                 value="GCN",
-                                label="Model Type"
+                                label="Model Type",
+                                info="Advanced models (HAN, R-GCN, GraphSAGE, Graph Transformer) archived"
                             )
 
                             epochs_slider = gr.Slider(

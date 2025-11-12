@@ -9,7 +9,7 @@ Comprehensive benchmark of GNN models on standard citation network datasets.
 
 **Contents:**
 - Dataset loading (Cora, CiteSeer, PubMed)
-- Model training (GCN, GAT, Graph Transformer)
+- Model training (GCN, GAT)
 - Performance comparison with published benchmarks
 - Visualization and analysis
 

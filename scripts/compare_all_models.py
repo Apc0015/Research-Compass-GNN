@@ -3,7 +3,7 @@
 Comprehensive Model Comparison Script
 
 Compares all models including:
-- GNN Models: GCN, GAT, GraphSAGE, Transformer
+- GNN Models: GCN, GAT
 - Baselines: Random, Logistic, Random Forest, MLP, Label Propagation, Node2Vec
 
 Generates professional comparison reports proving the value of GNNs.
@@ -28,7 +28,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from models import GCNModel, GATModel, GraphSAGEModel, GraphTransformerModel
+from models import GCNModel, GATModel
 from training.trainer import GCNTrainer
 from training.batch_training import create_trainer
 from data.dataset_utils import (
@@ -219,22 +219,6 @@ def main():
     print(f"   ✅ GAT Accuracy: {gat_acc:.4f}")
     print(f"   Time: {gat_time:.2f}s")
 
-    # 3. GraphSAGE
-    print("\n3️⃣  Training GraphSAGE")
-    sage_model = GraphSAGEModel(
-        input_dim=input_dim,
-        hidden_dim=256,
-        output_dim=128,
-        num_layers=2,
-        dropout=0.5,
-        task='classification',
-        num_classes=num_classes
-    )
-    sage_results = train_gnn_model(sage_model, data, args.epochs, device=device)
-    all_results['GraphSAGE'] = sage_results
-    print(f"   ✅ GraphSAGE Accuracy: {sage_results['test_acc']:.4f}")
-    print(f"   Time: {sage_results['training_time']:.2f}s")
-
     # ========================================================================
     # PART 3: Generate Comparison Report
     # ========================================================================
@@ -249,7 +233,7 @@ def main():
     for model_name, results in all_results.items():
         comparison_data.append({
             'Model': model_name,
-            'Type': 'GNN' if model_name in ['GCN', 'GAT', 'GraphSAGE', 'Transformer']
+            'Type': 'GNN' if model_name in ['GCN', 'GAT']
                     else ('Graph-Based' if model_name in ['label_propagation', 'node2vec']
                     else 'Traditional ML'),
             'Test Accuracy': results['test_acc'],

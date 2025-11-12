@@ -11,12 +11,11 @@ Advanced Graph Neural Network platform for citation network analysis and node cl
 
 ## 📋 Overview
 
-Research Compass GNN is a comprehensive platform for graph neural network research on citation networks. It implements **6 state-of-the-art GNN architectures** with advanced features for training, evaluation, and analysis.
+Research Compass GNN is a comprehensive platform for graph neural network research on citation networks. It implements **2 core GNN architectures** with advanced features for training, evaluation, and analysis.
 
 ### 🎯 Key Features
 
-- **6 GNN Models:** GCN, GAT, GraphSAGE, Graph Transformer, HAN, R-GCN
-- **Advanced Models:** Heterogeneous graphs (HAN) and relational graphs (R-GCN)
+- **2 GNN Models:** GCN (Graph Convolutional Network), GAT (Graph Attention Network)
 - **Multi-Format Upload:** PDF, DOCX, TXT, HTML, XML, TAR, ZIP archives
 - **Web URL Support:** Download papers from arXiv, DOI, and other academic sources
 - **Comprehensive Evaluation:** Node classification, link prediction metrics
@@ -76,11 +75,8 @@ https://arxiv.org/pdf/2010.11929.pdf
 # Train GCN on Cora dataset
 python scripts/train_enhanced.py --model GCN --dataset Cora --epochs 100
 
-# Train HAN (heterogeneous) on synthetic data
-python scripts/train_enhanced.py --model HAN --dataset synthetic --epochs 50
-
-# Train R-GCN (relational) with mini-batch
-python scripts/train_enhanced.py --model RGCN --dataset Cora --minibatch
+# Train GAT on synthetic data
+python scripts/train_enhanced.py --model GAT --dataset synthetic --epochs 50
 ```
 
 **3. Compare All Models**
@@ -92,29 +88,20 @@ python scripts/compare_all_models.py --dataset Cora
 python scripts/compare_all_models.py --dataset synthetic --size 1000
 ```
 
-**4. Run Verification Tests**
-```bash
-# Verify HAN implementation
-python tests/verify_han.py
-
-# Verify R-GCN implementation
-python tests/verify_rgcn.py
-```
-
 ---
 
-## 🏗️ Architecture
+## 🏗️ Available Models
 
 ### GNN Models Implemented
 
 | Model | Type | Key Features |
-|-------|------|--------------|
+|-------|------|--------------||
 | **GCN** | Homogeneous | Graph convolution with spectral filtering |
 | **GAT** | Homogeneous | Multi-head attention mechanism |
-| **GraphSAGE** | Homogeneous | Inductive learning with sampling |
-| **Graph Transformer** | Homogeneous | Full attention over graph structure |
-| **HAN** | Heterogeneous | Hierarchical attention for multi-relational graphs |
-| **R-GCN** | Relational | Relation-specific transformations with basis decomposition |
+
+**Note:** Advanced models (GraphSAGE, Graph Transformer, HAN, R-GCN) have been archived to `archive/models/` for simplified interface.
+
+---
 
 ### Model Details
 
@@ -143,11 +130,12 @@ Research-Compass-GNN/
 │
 ├── models/                  # GNN model implementations
 │   ├── gcn.py              # Graph Convolutional Network
-│   ├── gat.py              # Graph Attention Network
-│   ├── graphsage.py        # GraphSAGE
-│   ├── graph_transformer.py # Graph Transformer
-│   ├── han.py              # Heterogeneous Attention Network
-│   └── rgcn.py             # Relational GCN
+│   └── gat.py              # Graph Attention Network
+│
+├── archive/                 # Archived features
+│   ├── models/             # Advanced models (GraphSAGE, Graph Transformer, HAN, R-GCN)
+│   ├── citation_type_classifier.py  # Citation type classification
+│   └── heterogeneous_graph_builder.py  # Heterogeneous graph conversion
 │
 ├── data/                    # Data processing utilities
 │   ├── dataset_utils.py    # Dataset loading and preprocessing
