@@ -375,13 +375,40 @@ def process_pdfs(files, extract_citations, build_graph, extract_metadata):
     papers_data = []
 
     for idx, file in enumerate(files):
-        status += f"📄 Processing file {idx+1}/{len(files)}: {file.name}\n"
+        # Safely resolve filename from different upload types
+        if hasattr(file, 'name'):
+            filename = file.name
+        elif isinstance(file, dict) and 'name' in file:
+            filename = file['name']
+        else:
+            filename = f"uploaded_{idx}.pdf"
+
+        status += f"📄 Processing file {idx+1}/{len(files)}: {filename}\n"
+
+        # Prepare file for extract_text_from_pdf
+        # Handle bytes, bytearray, file-like objects, and dict-shaped uploads
+        if isinstance(file, (bytes, bytearray)):
+            pdf_input = file
+        elif isinstance(file, dict):
+            # Gradio sometimes sends dict with 'data' or 'path' keys
+            if 'data' in file:
+                pdf_input = file['data']
+            elif 'path' in file:
+                with open(file['path'], 'rb') as f:
+                    pdf_input = f.read()
+            else:
+                pdf_input = file
+        elif hasattr(file, 'read'):
+            # File-like object
+            pdf_input = file
+        else:
+            pdf_input = file
 
         # Extract text
-        text = extract_text_from_pdf(file)
+        text = extract_text_from_pdf(pdf_input)
 
         paper_info = {
-            'name': file.name,
+            'name': filename,
             'text': text[:1000],  # First 1000 chars
             'citations': [],
             'metadata': {}
@@ -402,7 +429,7 @@ def process_pdfs(files, extract_citations, build_graph, extract_metadata):
             }
 
         papers_data.append(paper_info)
-        app_state.paper_list.append(file.name)
+        app_state.paper_list.append(filename)
 
     status += f"\n✅ Processed {len(papers_data)} papers successfully!\n"
 
@@ -987,16 +1014,32 @@ def create_ui():
 # MAIN
 # ============================================================================
 
+def find_available_port(start_port=7860, max_tries=10):
+    """Find an available port, starting from start_port"""
+    import socket
+    for port in range(start_port, start_port + max_tries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', port))
+                return port
+        except OSError:
+            continue
+    return start_port  # Fallback to start_port and let Gradio handle the error
+
 if __name__ == "__main__":
     print("🚀 Starting Research Compass GNN...")
     print(f"   PyTorch: {torch.__version__}")
     print(f"   Device: {app_state.device}")
     print(f"   Gradio: {gr.__version__}")
 
+    # Find available port
+    port = find_available_port(start_port=7860, max_tries=10)
+    print(f"   Port: {port}")
+
     app = create_ui()
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=port,
         share=False,
         show_error=True
     )
