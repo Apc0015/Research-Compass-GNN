@@ -200,6 +200,15 @@ Research-Compass-GNN/
 - Topic-based communities
 - Realistic citation patterns
 
+### arXiv Papers Collection
+- **10 foundational GNN papers** (2017-2020)
+- Includes: GCN, GAT, GraphSAGE, HAN, R-GCN, GIN, Graph Transformers, and more
+- All papers from arXiv.org (open access)
+- Location: `datasets/arxiv_papers/`
+- Total size: 11M
+- See `datasets/DATASET_COLLECTION_REPORT.md` for details
+- Upload instructions: `datasets/HOW_TO_UPLOAD.txt`
+
 ---
 
 ## 📊 Usage Examples
@@ -391,7 +400,7 @@ python scripts/launcher.py
 ```
 
 **Available Tabs:**
-1. **Welcome & Demo** - Quick synthetic graph training demo
+1. **Real Data Training** - Train models on real citation networks
 2. **Evaluation Metrics** - Comprehensive metrics analysis
 3. **Attention Visualization** - Attention weight heatmaps
 4. **Temporal Analysis** - Citation trends and evolution
