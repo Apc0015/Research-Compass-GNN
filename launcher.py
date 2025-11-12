@@ -13,6 +13,7 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import networkx as nx
 from pathlib import Path
 import json
@@ -198,13 +199,177 @@ def build_graph_from_papers(papers_data: List[Dict]) -> Data:
 
 
 # ============================================================================
+# INTERACTIVE GRAPH VISUALIZATION FUNCTIONS
+# ============================================================================
+
+def create_interactive_graph(graph_data, predictions=None, attention_weights=None,
+                            show_predictions=False, paper_titles=None):
+    """
+    Create interactive Plotly graph visualization with real-time updates
+
+    Args:
+        graph_data: PyTorch Geometric Data object
+        predictions: Model predictions (optional, for coloring nodes)
+        attention_weights: GAT attention weights (optional, for edge thickness)
+        show_predictions: If True, color nodes by predictions
+        paper_titles: List of paper titles for hover text
+
+    Returns:
+        Plotly Figure object
+    """
+    try:
+        # Convert to NetworkX
+        G = nx.DiGraph()
+
+        num_nodes = graph_data.x.shape[0]
+        edge_index = graph_data.edge_index.cpu().numpy()
+
+        # Add nodes
+        for i in range(num_nodes):
+            G.add_node(i)
+
+        # Add edges
+        for i in range(edge_index.shape[1]):
+            src, dst = edge_index[0, i], edge_index[1, i]
+            G.add_edge(int(src), int(dst))
+
+        # Layout - use spring layout for better visualization
+        pos = nx.spring_layout(G, k=2, iterations=50, seed=42)
+
+        # Create edge traces
+        edge_x = []
+        edge_y = []
+
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=1, color='rgba(150, 150, 150, 0.4)'),
+            hoverinfo='none',
+            mode='lines',
+            showlegend=False
+        )
+
+        # Create node traces
+        node_x = []
+        node_y = []
+        node_colors = []
+        node_text = []
+        node_sizes = []
+
+        category_names = ['NLP', 'Computer Vision', 'GNN', 'RL', 'Theory']
+        category_colors = {
+            0: '#FF6B6B',  # NLP - Red
+            1: '#4ECDC4',  # CV - Teal
+            2: '#45B7D1',  # GNN - Blue
+            3: '#FFA07A',  # RL - Orange
+            4: '#98D8C8'   # Theory - Green
+        }
+
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+
+            # Node size based on degree (number of citations)
+            degree = G.degree(node)
+            node_sizes.append(20 + degree * 5)
+
+            # Get paper title
+            paper_title = paper_titles[node] if paper_titles and node < len(paper_titles) else f"Paper {node}"
+
+            # Node color and text
+            if show_predictions and predictions is not None:
+                # Color by prediction
+                pred = predictions[node].item()
+                node_colors.append(category_colors.get(pred, '#CCCCCC'))
+
+                # Check if correct
+                true_label = graph_data.y[node].item()
+                is_correct = (pred == true_label)
+                marker = "✓" if is_correct else "✗"
+
+                node_text.append(
+                    f"<b>{paper_title}</b><br>"
+                    f"Predicted: <b>{category_names[pred]}</b><br>"
+                    f"Actual: {category_names[true_label]}<br>"
+                    f"{marker} <b>{'Correct' if is_correct else 'Incorrect'}</b><br>"
+                    f"Citations: {degree}"
+                )
+            else:
+                # Color by true label
+                true_label = graph_data.y[node].item()
+                node_colors.append(category_colors.get(true_label, '#CCCCCC'))
+                node_text.append(
+                    f"<b>{paper_title}</b><br>"
+                    f"Category: <b>{category_names[true_label]}</b><br>"
+                    f"Citations: {degree}"
+                )
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers',
+            hoverinfo='text',
+            text=node_text,
+            marker=dict(
+                showscale=False,
+                color=node_colors,
+                size=node_sizes,
+                line=dict(width=2, color='white'),
+                opacity=0.9
+            ),
+            showlegend=False
+        )
+
+        # Create figure
+        fig = go.Figure(data=[edge_trace, node_trace])
+
+        # Update layout
+        title = "📊 Citation Network Visualization"
+        if show_predictions:
+            title += " - Model Predictions (✓ = Correct, ✗ = Incorrect)"
+
+        fig.update_layout(
+            title=dict(
+                text=title,
+                font=dict(size=18, color='#333'),
+                x=0.5,
+                xanchor='center'
+            ),
+            showlegend=False,
+            hovermode='closest',
+            margin=dict(b=20, l=5, r=5, t=60),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            plot_bgcolor='rgba(245, 245, 245, 0.8)',
+            paper_bgcolor='white',
+            height=600
+        )
+
+        return fig
+
+    except Exception as e:
+        # Return empty figure on error
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"Error creating visualization: {str(e)}",
+            height=600
+        )
+        return fig
+
+
+# ============================================================================
 # REAL DATA TRAINING TAB FUNCTIONS
 # ============================================================================
 
 def process_pdfs(files, extract_citations, build_graph, extract_metadata):
-    """Process uploaded PDF files"""
+    """Process uploaded PDF files and create initial graph visualization"""
     if not files or len(files) == 0:
-        return "⚠️ No files uploaded", "", None
+        return "⚠️ No files uploaded", "", None, None
 
     status = f"🔄 Processing {len(files)} PDF files...\n\n"
     papers_data = []
@@ -243,6 +408,7 @@ def process_pdfs(files, extract_citations, build_graph, extract_metadata):
 
     # Build graph if enabled
     graph_stats = ""
+    initial_graph = None
     if build_graph:
         status += "\n🔄 Building knowledge graph...\n"
         try:
@@ -257,6 +423,16 @@ def process_pdfs(files, extract_citations, build_graph, extract_metadata):
 - 📈 Avg Citations/Paper: {graph_data.num_edges / graph_data.num_nodes:.2f}
 """
             status += "✅ Knowledge graph built successfully!\n"
+            status += "👉 Click 'Train Model' to see live visualization during training!\n"
+
+            # Create initial graph visualization
+            initial_graph = create_interactive_graph(
+                graph_data,
+                predictions=None,
+                show_predictions=False,
+                paper_titles=app_state.paper_list
+            )
+
         except Exception as e:
             status += f"❌ Error building graph: {str(e)}\n"
             graph_stats = f"❌ Error: {str(e)}"
@@ -264,13 +440,14 @@ def process_pdfs(files, extract_citations, build_graph, extract_metadata):
     # Update dropdown choices
     paper_choices = gr.Dropdown(choices=app_state.paper_list, value=app_state.paper_list[0] if app_state.paper_list else None)
 
-    return status, graph_stats, paper_choices
+    return status, graph_stats, paper_choices, initial_graph
 
 
 def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Progress()):
-    """Train GNN model with live progress updates"""
+    """Train GNN model with live progress updates AND interactive graph visualization"""
     if app_state.graph_data is None:
-        return "❌ Error: No graph data available. Please process papers first!", None, ""
+        yield "❌ Error: No graph data available. Please process papers first!", None, "", None
+        return
 
     progress(0, desc="Initializing...")
 
@@ -291,7 +468,8 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
     elif model_type == "Graph Transformer":
         model = GraphTransformerModel(input_dim=num_features, output_dim=num_classes)
     else:
-        return f"❌ Unknown model type: {model_type}", None, ""
+        yield f"❌ Unknown model type: {model_type}", None, "", None
+        return
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=5e-4)
@@ -299,7 +477,7 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
     # Training history
     history = {'train_loss': [], 'train_acc': [], 'val_acc': []}
 
-    status = f"🚀 Training {model_type} model...\n\n"
+    status = f"🚀 Training {model_type} model with LIVE graph visualization...\n\n"
     status += f"Model Parameters: {sum(p.numel() for p in model.parameters()):,}\n"
     status += f"Device: {device}\n\n"
 
@@ -329,9 +507,21 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
             history['train_acc'].append(train_acc.item())
             history['val_acc'].append(val_acc.item())
 
-        # Update status every 10 epochs
-        if epoch % max(1, epochs // 10) == 0 or epoch == epochs - 1:
+        # Update status and visualization every 10 epochs
+        update_interval = max(1, epochs // 10)
+        if epoch % update_interval == 0 or epoch == epochs - 1:
             status += f"Epoch {epoch+1:3d} | Loss: {loss.item():.4f} | Train Acc: {train_acc.item():.4f} | Val Acc: {val_acc.item():.4f}\n"
+
+            # Create live graph visualization showing current predictions
+            live_graph = create_interactive_graph(
+                data,
+                predictions=pred,
+                show_predictions=True,
+                paper_titles=app_state.paper_list
+            )
+
+            # Yield intermediate results
+            yield status, live_graph, "", None
 
     training_time = time.time() - start_time
 
@@ -342,9 +532,15 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
         pred = out.argmax(dim=1)
         test_acc = (pred[data.test_mask] == data.y[data.test_mask]).float().mean()
 
+        # Calculate per-class metrics
+        correct = (pred == data.y).cpu().numpy()
+        num_correct = correct.sum()
+        num_total = len(correct)
+
     status += f"\n✅ Training Complete!\n"
     status += f"   Training Time: {training_time:.2f}s\n"
-    status += f"   Final Test Accuracy: {test_acc.item():.4f}\n"
+    status += f"   Final Test Accuracy: {test_acc.item():.4f} ({test_acc.item()*100:.2f}%)\n"
+    status += f"   Correct Predictions: {num_correct}/{num_total}\n"
 
     # Save model
     app_state.trained_model = model
@@ -355,7 +551,7 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
     # Loss curve
-    axes[0].plot(history['train_loss'], label='Train Loss', linewidth=2)
+    axes[0].plot(history['train_loss'], label='Train Loss', linewidth=2, color='#FF6B6B')
     axes[0].set_xlabel('Epoch')
     axes[0].set_ylabel('Loss')
     axes[0].set_title('Training Loss')
@@ -363,16 +559,24 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
     axes[0].grid(True, alpha=0.3)
 
     # Accuracy curves
-    axes[1].plot(history['train_acc'], label='Train Acc', linewidth=2)
-    axes[1].plot(history['val_acc'], label='Val Acc', linewidth=2)
+    axes[1].plot(history['train_acc'], label='Train Acc', linewidth=2, color='#4ECDC4')
+    axes[1].plot(history['val_acc'], label='Val Acc', linewidth=2, color='#45B7D1')
     axes[1].set_xlabel('Epoch')
     axes[1].set_ylabel('Accuracy')
-    axes[1].set_title('Training Accuracy')
+    axes[1].set_title('Training & Validation Accuracy')
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
     axes[1].set_ylim([0, 1])
 
     plt.tight_layout()
+
+    # Create final graph visualization
+    final_graph = create_interactive_graph(
+        data,
+        predictions=pred,
+        show_predictions=True,
+        paper_titles=app_state.paper_list
+    )
 
     # Results summary
     results_summary = f"""
@@ -386,14 +590,22 @@ def train_gnn_live(model_type, epochs, learning_rate, task_type, progress=gr.Pro
 - **Test Accuracy:** {test_acc.item():.4f} ({test_acc.item()*100:.2f}%)
 - **Best Val Accuracy:** {max(history['val_acc']):.4f}
 - **Final Train Accuracy:** {history['train_acc'][-1]:.4f}
+- **Correct Predictions:** {num_correct}/{num_total}
 
 ### Model Info:
 - **Parameters:** {sum(p.numel() for p in model.parameters()):,}
 - **Epochs Trained:** {epochs}
 - **Learning Rate:** {learning_rate}
+
+### Legend:
+- ✓ = Correct prediction
+- ✗ = Incorrect prediction
+- Node size = number of citations
+- Node color = predicted category
 """
 
-    return status, fig, results_summary
+    # Final yield with all results
+    yield status, final_graph, results_summary, fig
 
 
 def make_prediction(paper_name, prediction_type, top_k):
@@ -582,10 +794,14 @@ def create_ui():
                 )
 
             # ================================================================
-            # TAB 2: REAL DATA TRAINING (MAIN FEATURE)
+            # TAB 2: REAL DATA TRAINING WITH LIVE VISUALIZATION (MAIN FEATURE)
             # ================================================================
-            with gr.Tab("📄 Real Data Training"):
-                gr.Markdown("## Real Data Training with GNN Models")
+            with gr.Tab("📄 Real Data Training + Live Visualization"):
+                gr.Markdown("""
+                ## 🎨 Real Data Training with LIVE Interactive Graph Visualization
+
+                Upload PDFs → Build Citation Network → Train GNN → Watch Live Updates!
+                """)
 
                 with gr.Row():
                     # LEFT SECTION: PDF Upload & Processing
@@ -644,10 +860,9 @@ def create_ui():
                                 label="Task Type"
                             )
 
-                        train_button = gr.Button("🚀 Train GNN Model", variant="primary", size="lg")
+                        train_button = gr.Button("🚀 Train with Live Visualization", variant="primary", size="lg")
 
-                        training_status = gr.Textbox(label="Training Progress", lines=10)
-                        training_plot = gr.Plot(label="Training Curves")
+                        training_status = gr.Textbox(label="Training Progress", lines=8)
                         results_display = gr.Markdown("**Training results will appear here**")
 
                         gr.Markdown("---")
@@ -680,17 +895,40 @@ def create_ui():
                         export_button = gr.Button("💾 Export Results", variant="secondary")
                         export_status = gr.Textbox(label="Export Status", lines=2)
 
+                # Full-width visualization section
+                gr.Markdown("---")
+                gr.Markdown("## 🎨 Interactive Citation Network Visualization")
+
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        graph_viz = gr.Plot(
+                            label="Live Graph Visualization - Watch nodes change color as model learns!",
+                            value=None
+                        )
+                        viz_info = gr.Markdown("""
+**Visualization Guide:**
+- 🔵 **Node Colors**: Research categories (NLP=Red, CV=Teal, GNN=Blue, RL=Orange, Theory=Green)
+- 📏 **Node Size**: Number of citations (bigger = more cited)
+- ✓ **Green Checkmark**: Correct prediction
+- ✗ **Red X**: Incorrect prediction
+- 🔍 **Hover**: See paper details, predictions, and accuracy
+- 🎬 **During Training**: Graph updates every 10 epochs showing live predictions
+                        """)
+
+                    with gr.Column(scale=1):
+                        training_plot = gr.Plot(label="Training Curves (Loss & Accuracy)")
+
                 # Connect buttons to functions
                 process_button.click(
                     fn=process_pdfs,
                     inputs=[file_upload, extract_citations_cb, build_graph_cb, extract_metadata_cb],
-                    outputs=[processing_status, graph_stats, paper_select]
+                    outputs=[processing_status, graph_stats, paper_select, graph_viz]
                 )
 
                 train_button.click(
                     fn=train_gnn_live,
                     inputs=[model_type, epochs_slider, lr_slider, task_type],
-                    outputs=[training_status, training_plot, results_display]
+                    outputs=[training_status, graph_viz, results_display, training_plot]
                 )
 
                 predict_button.click(
