@@ -1,8 +1,0 @@
-Sample Research Paper 2: Computer Vision Methods  
-
-This work investigates convolutional neural networks for image classification.
-Our approach achieves state-of-the-art results on ImageNet.
-
-References:
-[1] Brown et al., 2021
-[2] Smith et al., 2020
